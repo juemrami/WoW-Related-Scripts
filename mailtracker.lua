@@ -17,15 +17,17 @@ if not aura_env.init then
     hooksecurefunc("SendMailFrame_SendMail", function(...)
         local name = SendMailNameEditBox:GetText()
         name = name ~= "" and name or nil
-        print("sending mail to: ", name)
+        -- print("sending mail to: ", name)
         WeakAuras.ScanEvents("MAIL_SEND_DATA", name)
     end)
     aura_env.init = true
-    if aura_env.init then print("Hooked") end
+    C_ChatInfo.RegisterAddonMessagePrefix("MAIL_TRACKER")
+    if aura_env.init then print("Mail Tracker: Hooked and scanning for mail events.") end
 end
 aura_env.cleanup_states = function(allstates)
     local mail_data = aura_env.saved.mail_data
     for mail_type, _ in pairs(mail_data) do
+        print("cleaning up mail type: ", mail_type)
         for character_key, _ in pairs(mail_data[mail_type]) do
             for i, mail_info in ipairs(mail_data[mail_type][character_key]) do
                 -- ViragDevTool:AddData(mail_info, "mail info")
@@ -33,8 +35,9 @@ aura_env.cleanup_states = function(allstates)
                 if mail_info and mail_info ~= {} then
                     should_remove = GetTime() > mail_info.expirationTime
                 end
-                print("removing: ", should_remove)
                 if should_remove then
+                    print(("removing mail info %s -> %s, expired: %f seconds ago"):format(mail_info.sender, mail_info.recipient,
+                        GetTime() - mail_info.expirationTime))
                     tremove(mail_data[mail_type][character_key], i)
                     local key = string.format(
                         "%s:%s:%.0f",
@@ -92,12 +95,11 @@ aura_env.set_outgoing_states = function(allstates)
             sender = mail_info.sender,
             recipient = mail_info.recipient,
             icon = "Interface/Icons/INV_Letter_15",
-
             autoHide = false,
         }
     end
 end
--- MAIL_SEND_DATA, MAIL_SHOW, MAIL_SEND_SUCCESS
+-- MAIL_SEND_DATA, MAIL_SHOW, MAIL_SEND_SUCCESS, WHO_LIST_UPDATE
 aura_env.track_mail = function(allstates, event, ...)
     if aura_env.saved and aura_env.saved.mail_data then
         if event == "MAIL_SEND_DATA" then
@@ -132,7 +134,42 @@ aura_env.track_mail = function(allstates, event, ...)
                     function()
                         aura_env.cleanup_states(allstates)
                     end)
+                aura_env.send_addon_message(sender, mail_info.expirationTime)
                 ViragDevTool:AddData(mail_data, "mail_data")
+            end
+        elseif event == "CHAT_MSG_ADDON" then
+            if ... == "MAIL_TRACKER" then
+                local message, _, msg_sender, msg_target = select(2, ...)
+                msg_sender = strsplit("-", msg_sender)
+                msg_target = strsplit("-", msg_target)
+                if msg_target == UnitName("player") then
+                    local sender, expirationTime = strsplit(":", message)
+                    expirationTime = tonumber(expirationTime)
+                    local mail_data = aura_env.saved.mail_data
+                    local mail_info = {
+                        sender = sender,
+                        recipient = msg_target,
+                        duration = aura_env.MAIL_DELIVERY_TIME,
+                        expirationTime = expirationTime
+                    }
+                    mail_data.incoming_for_character[msg_target] = mail_data.incoming_for_character[msg_target] or {}
+                    mail_data.outgoing_for_character[sender] = mail_data.outgoing_for_character[sender] or {}
+                    tinsert(
+                        mail_data.incoming_for_character[msg_target],
+                        mail_info
+
+                    )
+                    tinsert(
+                        mail_data.outgoing_for_character[sender],
+                        mail_info
+                    )
+                    C_Timer.After(
+                        aura_env.MAIL_DELIVERY_TIME + 5,
+                        function()
+                            aura_env.cleanup_states(allstates)
+                        end)
+                    -- ViragDevTool:AddData(mail_data, "mail_data")
+                end
             end
         end
         aura_env.cleanup_states(allstates)
@@ -146,16 +183,32 @@ aura_env.custom_text = function(...)
     if aura_env.state
         and aura_env.state.recipient and aura_env.state.sender then
         local formatted_name = ""
-        if aura_env.state.recipient == UnitName("Player") then
+        if aura_env.state.recipient == UnitName("player") then
             formatted_name = ("From %s"):format(aura_env.state.sender)
+        else
+            formatted_name = ("To %s"):format(aura_env.state.recipient)
         end
-        formatted_name = ("To %s"):format(aura_env.state.recipient)
-        -- print(aura_env.state.ready_icon)
-        local ready_icon = aura_env.state.expirationTime < GetTime()
-            and aura_env.escape_texture("Interface/RaidFrame/ReadyCheck-Ready")
-            or ""
-        return formatted_name, ready_icon
+        local mail_ready
+        if aura_env.state.expirationTime and
+            aura_env.state.expirationTime <= GetTime() then
+            -- print("should ready check")
+            mail_ready = aura_env.escape_texture("Interface/RaidFrame/ReadyCheck-Ready")
+        end
+        return formatted_name, mail_ready
     end
-    -- ViragDevTool:AddData({ ... }, "text args")
+    ViragDevTool:AddData({ ... }, "text args")
     -- ViragDevTool:AddData(aura_env.state, "state")
 end
+aura_env.send_addon_message = function(recipient, expirationTime)
+    print("sending addon message")
+    C_ChatInfo.SendAddonMessage(
+        "MAIL_TRACKER",
+        ("%s:%.2f"):format(
+            UnitName("player"),
+            expirationTime
+        ),
+        "WHISPER",
+        recipient
+    )
+end
+-- C_ChatInfo.SendAddonMessage("MAIL_TRACKER","this is a test","WHISPER","Bigsniffa")
