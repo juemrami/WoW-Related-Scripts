@@ -10,7 +10,8 @@
         "/c:/Program Files (x86)/World of Warcraft/_classic_era_/Interface/AddOns/RXPGuides": true
     },
     "Lua.diagnostics.disable": [
-        "deprecated"
+        "deprecated",
+        "duplicate-set-field"
     ],
     "Lua.diagnostics.globals": [
         "wipe",
@@ -241,7 +242,8 @@
         "NUM_CONTAINER_FRAMES",
         "CreateAtlasMarkupWithAtlasSize",
         "DropDownList1",
-        "UIDropDownMenu_AddButton"
+        "UIDropDownMenu_AddButton",
+        "ERR_ITEM_LOCKED"
     ],
     "cSpell.enabled": true,
     "cSpell.enableFiletypes": [
