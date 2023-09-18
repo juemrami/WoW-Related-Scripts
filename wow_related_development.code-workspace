@@ -820,7 +820,13 @@
 			"LootFrame",
 			"InboxFrame",
 			"LOOT",
-			"ERR_ITEM_LOCKED"
+			"ERR_ITEM_LOCKED",
+			"CompactUnitFrame_UpdateAggroHighlight",
+			"CompactUnitFrame_UpdateAggroFlash",
+			"CompactUnitFrame_UpdateHealthBorder",
+			"CompactUnitFrame_UpdateHealthColor",
+			"CompactUnitFrame_UpdateName",
+			"DefaultCompactUnitFrameOptions"
 		],
 		"cSpell.words": [
 			"allstates",

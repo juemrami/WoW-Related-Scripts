@@ -30,20 +30,19 @@ aura_env.watched_frame_events = {
     LOOT_CLOSED = true,
     PLAYER_INTERACTION_MANAGER_FRAME_HIDE = true,
 }
-aura_env.bag_check_events = {
+aura_env.button_update_events = {
     BAG_UPDATE_DELAYED = true,
     PLAYER_REGEN_ENABLED = true,
     -- BAG_UPDATE_COOLDOWN = true,
     LOOT_CLOSED = true,
 }
 aura_env.button_id = "AutoOpenItemsButton"
-aura_env.openable_items = {}
+
 aura_env.bankOpen = false
 aura_env.mailOpen = false
 aura_env.merchantOpen = false
 aura_env.isLooting = false
-
-aura_env.enableButton = function(bagId, slotId)
+aura_env.setButton = function(bagId, slotId)
     if InCombatLockdown() then return false end
     if not aura_env.button then
         aura_env.button = _G[aura_env.button_id] or
@@ -53,12 +52,11 @@ aura_env.enableButton = function(bagId, slotId)
     end
     local bag_slot = ("%s %s"):format(bagId, slotId)
     if aura_env.button:GetAttribute("item") ~= bag_slot then
-        print("making button for " .. bag_slot)
+        -- print("making button for " .. bag_slot)
         aura_env.button:SetAttribute("item", bag_slot)
     end
     aura_env.button:Enable()
     aura_env.button:Show()
-    return true
 end
 aura_env.removeButton = function()
     aura_env.button = _G[aura_env.button_id]
@@ -84,14 +82,10 @@ aura_env.onWatchedFramesUpdate = function(_, event, ...)
         end
     end
 end
-aura_env.onBagUpdate = function(allstates, event, ...)
+aura_env.buttonUpdateHandler = function(allstates)
     for bag = 0, 4 do
         for slot = 1, C_Container.GetContainerNumSlots(bag) do
             local info = C_Container.GetContainerItemInfo(bag, slot)
-            if info then
-                -- print("checking bag " .. bag .. " slot " .. slot, info.itemName, "hasLoot: ", info.hasLoot)
-            end
-
             if info
                 and info.itemID
                 and aura_env.allowed_items[info.itemID]
@@ -101,36 +95,37 @@ aura_env.onBagUpdate = function(allstates, event, ...)
                 if allstates[""] then
                     changed = (allstates[""].bag ~= bag) or (allstates[""].slot ~= slot)
                 end
-                local is_container_locked = aura_env.last_locked_item 
+                local is_container_locked = aura_env.last_locked_item
                     and aura_env.last_locked_item.bag == bag
                     and aura_env.last_locked_item.slot == slot
-
+                
+                -- disable this for now
+                is_container_locked = false
                 if not is_container_locked then
                     if changed then
                         print("AutoOpenItems: Next lootable item - " .. info.hyperlink .. ".")
                         tinsert(aura_env.openable_items, { bag = bag, slot = slot })
                     end
                     --C_Container.UseContainerItem(bag, slot)
-                    aura_env.enableButton(bag, slot)
+                    aura_env.setButton(bag, slot)
                     allstates[""] = {
                         changed = changed,
                         show = true,
                         itemName = info.itemName,
                         icon = info.iconFileID,
                         count = info.stackCount,
-                        enabled = not info.isLocked and aura_env.enableButton(bag, slot),
+                        enabled = not info.isLocked and aura_env.setButton(bag, slot),
                         bag = bag,
                         slot = slot,
                     }
-                    return true
-                else 
-                    print("AutoOpenItems: Item " .. info.hyperlink .." locked. Temporarily ignoring.")
                     aura_env.last_locked_item = nil
+                    return true
+                else
+                    print("AutoOpenItems: Item " .. info.hyperlink .. " locked. Temporarily ignoring.")
                 end
             end
         end
     end
-    print("closing aura.", event)
     allstates[""] = {
         changed = true,
         show = false,
@@ -140,25 +135,24 @@ end
 
 -- Events: BANKFRAME_OPENED, BANKFRAME_CLOSED, MAIL_SHOW, MERCHANT_SHOW, MERCHANT_CLOSED, LOOT_OPENED, LOOT_CLOSED, PLAYER_REGEN_ENABLED, BAG_UPDATE_DELAYED, BAG_UPDATE_COOLDOWN, PLAYER_INTERACTION_MANAGER_FRAME_HIDE, UI_ERROR_MESSAGE
 aura_env.onEvent = function(allstates, event, ...)
-    print(event)
     if aura_env.watched_frame_events[event] then
         aura_env.onWatchedFramesUpdate(allstates, event, ...)
-    end
-    if aura_env.bankOpen
-        or aura_env.mailOpen
-        or aura_env.merchantOpen
-        or aura_env.isLooting
-        or InCombatLockdown()
-    then
-        print("disabling")
-        if allstates[""] then
-            allstates[""].changed = true
-            allstates[""].disabled = true
+    elseif aura_env.button_update_events[event] then
+        if aura_env.bankOpen
+            or aura_env.mailOpen
+            or aura_env.merchantOpen
+            or aura_env.isLooting
+            or InCombatLockdown()
+        then
+            if allstates[""] then
+                allstates[""].changed = true
+                allstates[""].disabled = true
+            end
+            aura_env.removeButton()
+            return true 
+        else
+            return aura_env.buttonUpdateHandler(allstates)
         end
-        aura_env.removeButton()
-        return true
-    elseif aura_env.bag_check_events[event] then
-        return aura_env.onBagUpdate(allstates, event, ...)
     end
     if event == "UI_ERROR_MESSAGE"
         and select(2, ...) == ERR_ITEM_LOCKED then
