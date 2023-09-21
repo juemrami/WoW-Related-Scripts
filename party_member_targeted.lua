@@ -1,48 +1,31 @@
-aura_env.enemyTargetTable = {}
+aura_env.enemiesOnThreatTable = {}
 -- Events: UNIT_THREAT_LIST_UPDATE, CLEU:UNIT_DIED, UNIT_THREAT_SITUATION_UPDATE
 aura_env.onEvent = function(states, event, ...)
     if event == "UNIT_THREAT_LIST_UPDATE" then
-        local enemyUnit = ... or "none"
-        local groupSize = GetNumGroupMembers()
-        for N = 1, groupSize do
-            local partyUnit = "party" .. N
-            if N == groupSize then partyUnit = "player" end
-            if UnitIsEnemy(partyUnit, enemyUnit) then
-                local enemyTarget = enemyUnit .. "target"
-                if UnitIsUnit(enemyTarget, partyUnit) then
-                    local enemyGUID = UnitGUID(enemyUnit)
-                    if enemyGUID then
-                        aura_env.enemyTargetTable[enemyGUID] = partyUnit
-                    end
-                end
-                aura_env.setStateForUnit(states, partyUnit)
-            end
+        local enemyUnit = ...
+        local enemyGUID = UnitGUID(enemyUnit)
+        if enemyGUID then
+            aura_env.enemiesOnThreatTable[enemyGUID] = true
         end
-        return true
     elseif event == "UNIT_THREAT_SITUATION_UPDATE" then
         local friendlyUnit = ...
-        local status = UnitThreatSituation(friendlyUnit)
-        if (not status or status < 1) and states[friendlyUnit] then
-            states[friendlyUnit] = {
-                show = false,
-                changed = true,
-            }
-        else
-            aura_env.setStateForUnit(states, friendlyUnit)
-        end
+        aura_env.updateStateForUnit(states, friendlyUnit)
         return true
     elseif event == "COMBAT_LOG_EVENT_UNFILTERED"
         and select(2, ...) == "UNIT_DIED" then
         local unitGUID = select(8, ...)
-        aura_env.enemyTargetTable[unitGUID] = nil
+        aura_env.enemiesOnThreatTable[unitGUID] = nil
     end
 end
-aura_env.setStateForUnit= function(states, unit)
+aura_env.updateStateForUnit = function(states, unit)
+    -- Verify unit is in party or raid
+    local unitType = aura_env.config.petsEnabled 
+        and "UnitPlayerOrPet" or "Unit"
+    if not _G[unitType.."InParty"] then return end
     local count = aura_env.getTargetedByCount(unit)
     local changed = not states[unit]
         or states[unit].count ~= count
-    if count ~= 0
-    then
+    if count ~= 0 then
         states[unit] = {
             show = true,
             changed = changed,
@@ -50,21 +33,25 @@ aura_env.setStateForUnit= function(states, unit)
             count = count,
             stacks = count,
         }
-    else
-        if states[unit] then
-            states[unit].show = false
-            states[unit].changed = true
-        end
+    elseif states[unit] then
+        states[unit] = {
+            show = false,
+            changed = true
+        }
     end
 end
 aura_env.getTargetedByCount = function(unit)
     local count = 0
-    for _enemy, target in pairs(aura_env.enemyTargetTable)
+    for enemyGUID, _ in pairs(aura_env.enemiesOnThreatTable)
     do
-        if UnitIsUnit(target, unit) then
-            count = count + 1
+        local enemy = UnitTokenFromGUID(enemyGUID)
+        if enemy then
+            local enemyTarget = enemy .. "target"
+            if UnitIsEnemy(enemy, enemyTarget)
+                and UnitIsUnit(enemyTarget, unit) then
+                count = count + 1
+            end
         end
     end
     return count
 end
-

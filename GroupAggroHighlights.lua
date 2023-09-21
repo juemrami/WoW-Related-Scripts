@@ -10,6 +10,7 @@ aura_env.onEvent = function(states, event, ...)
             if N == groupSize then unit = "player" end
             local status = event == "UNIT_THREAT_SITUATION_UPDATE"
                 and UnitThreatSituation(unit) or UnitThreatSituation(unit, ...);
+            if not WeakAuras.GetUnitFrame(unit) then return end
             if (status and status > 0) then
                 -- if states[unit]
                 --     and states[unit].status == status then
