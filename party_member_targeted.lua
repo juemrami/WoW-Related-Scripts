@@ -1,48 +1,34 @@
 aura_env.enemyTargetTable = {}
-aura_env.isSameUnit = function(unit1, unit2)
-    if unit1 == unit2 then
-        return true
-    else
-        return UnitGUID(unit1) == UnitGUID(unit2)
-    end
-end
--- Events: UNIT_THREAT_LIST_UPDATE, CLEU:UNIT_DIED
-aura_env.onEvent = function(allstates, event, ...)
+-- Events: UNIT_THREAT_LIST_UPDATE, CLEU:UNIT_DIED, UNIT_THREAT_SITUATION_UPDATE
+aura_env.onEvent = function(states, event, ...)
     if event == "UNIT_THREAT_LIST_UPDATE" then
-        local unitId = ... or "none"
-        for N = 1, 5 do
+        local enemyUnit = ... or "none"
+        local groupSize = GetNumGroupMembers()
+        for N = 1, groupSize do
             local partyUnit = "party" .. N
-            if N == 5 then partyUnit = "player" end
-            if UnitIsEnemy(partyUnit, unitId) then
-                local enemyTargetUnit = unitId .. "target"
-                if aura_env.isSameUnit(enemyTargetUnit, partyUnit) then
-                    local enemyGUID = UnitGUID(unitId)
+            if N == groupSize then partyUnit = "player" end
+            if UnitIsEnemy(partyUnit, enemyUnit) then
+                local enemyTarget = enemyUnit .. "target"
+                if UnitIsUnit(enemyTarget, partyUnit) then
+                    local enemyGUID = UnitGUID(enemyUnit)
                     if enemyGUID then
                         aura_env.enemyTargetTable[enemyGUID] = partyUnit
                     end
                 end
-                local targetedByCount = 0
-                for _, targetUnit in pairs(aura_env.enemyTargetTable)
-                do
-                    if aura_env.isSameUnit(targetUnit, partyUnit) then
-                        targetedByCount = targetedByCount + 1
-                    end
-                end
-                if targetedByCount ~= 0 then
-                    allstates[partyUnit] = {
-                        show = true,
-                        changed = true,
-                        unit = partyUnit,
-                        count = targetedByCount,
-                        stacks = targetedByCount,
-                    }
-                else
-                    if allstates[partyUnit] then
-                    allstates[partyUnit].show = false
-                    allstates[partyUnit].changed = true
-                    end
-                end
+                aura_env.setStateForUnit(states, partyUnit)
             end
+        end
+        return true
+    elseif event == "UNIT_THREAT_SITUATION_UPDATE" then
+        local friendlyUnit = ...
+        local status = UnitThreatSituation(friendlyUnit)
+        if (not status or status < 1) and states[friendlyUnit] then
+            states[friendlyUnit] = {
+                show = false,
+                changed = true,
+            }
+        else
+            aura_env.setStateForUnit(states, friendlyUnit)
         end
         return true
     elseif event == "COMBAT_LOG_EVENT_UNFILTERED"
@@ -51,9 +37,34 @@ aura_env.onEvent = function(allstates, event, ...)
         aura_env.enemyTargetTable[unitGUID] = nil
     end
 end
-
-aura_env.anchorFunction = function()
-    if aura_env.state.unit then
-        return WeakAuras.GetUnitFrame(aura_env.state.unit)
+aura_env.setStateForUnit= function(states, unit)
+    local count = aura_env.getTargetedByCount(unit)
+    local changed = not states[unit]
+        or states[unit].count ~= count
+    if count ~= 0
+    then
+        states[unit] = {
+            show = true,
+            changed = changed,
+            unit = unit,
+            count = count,
+            stacks = count,
+        }
+    else
+        if states[unit] then
+            states[unit].show = false
+            states[unit].changed = true
+        end
     end
 end
+aura_env.getTargetedByCount = function(unit)
+    local count = 0
+    for _enemy, target in pairs(aura_env.enemyTargetTable)
+    do
+        if UnitIsUnit(target, unit) then
+            count = count + 1
+        end
+    end
+    return count
+end
+

@@ -243,10 +243,17 @@
         "CreateAtlasMarkupWithAtlasSize",
         "DropDownList1",
         "UIDropDownMenu_AddButton",
-        "ERR_ITEM_LOCKED"
+        "ERR_ITEM_LOCKED",
+        "InterfaceOverrides",
+        "COMPACT_UNIT_FRAME_PROFILE_DISPLAYAGGROHIGHLIGHT"
     ],
     "cSpell.enabled": true,
     "cSpell.enableFiletypes": [
         "lua"
+    ],
+    "cSpell.words": [
+        "DISPLAYAGGROHIGHLIGHT",
+        "hooksecurefunc",
+        "securecallfunction"
     ]
 }
