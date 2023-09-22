@@ -14,18 +14,17 @@ aura_env.onEvent = function(states, event, ...)
                 unitPet = "pet"
             end
 
-            local isUpdate = aura_env.setStateForUnit(states, unit, ...)
+            local isUpdate = aura_env.setStateForUnit(states, unit)
             if aura_env.config.includePets then
-                isUpdate = aura_env.setStateForUnit(states, unitPet, ...) or isUpdate
+                isUpdate = aura_env.setStateForUnit(states, unitPet) or isUpdate
             end
             statesUpdated = statesUpdated or isUpdate
         end
         return statesUpdated
     end
 end
-aura_env.setStateForUnit = function(states, unit, mobUnit)
-    -- local status = mobUnit and UnitThreatSituation(unit, mobUnit) or UnitThreatSituation(unit);
-    local status = UnitThreatSituation(unit)
+aura_env.setStateForUnit = function(states, unit)
+    local status = UnitThreatSituation(unit) -- for Any Enemy
     if (status and status > 0) then
         local changed = not states[unit] or states[unit].status ~= status
         if not changed then return false end
@@ -59,7 +58,6 @@ aura_env.fitTextureToFrame = function()
             0.00781250, 0.55468750, 0.00781250, 0.27343750
         )
         aura_env.region:SetSize(aura_env.state.frame:GetSize())
-        -- print(aura_env.region.id, "post setallpoints")
         ViragDevTool:AddData(aura_env.state.frame, aura_env.state.unit .. " Frame")
         aura_env.region:Color(unpack(aura_env.state.color))
         print("anchored to ", aura_env.state.frame:GetParent():GetName())
