@@ -44,7 +44,7 @@ aura_env.getTargetedByCount = function(unit)
     local count = 0
     for enemyGUID, _ in pairs(aura_env.enemiesOnThreatTable)
     do
-        local enemy = UnitTokenFromGUID(enemyGUID)
+        local enemy = aura_env.getNamePlateTokenForGUID(enemyGUID)
         if enemy then
             local enemyTarget = enemy .. "target"
             if UnitIsEnemy(enemy, enemyTarget)
@@ -54,4 +54,12 @@ aura_env.getTargetedByCount = function(unit)
         end
     end
     return count
+end
+aura_env.getNamePlateTokenForGUID = function(unitGUID)
+    for _, plate in ipairs(C_NamePlate.GetNamePlates()) do
+        if unitGUID == UnitGUID(plate.namePlateUnitToken) then
+            print(plate.namePlateUnitToken)
+            return plate.namePlateUnitToken
+        end
+    end
 end
