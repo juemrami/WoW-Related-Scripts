@@ -64,7 +64,8 @@ aura_env.calculateTable = function()
         return
     end
     -- Dodge chance
-    local dodgeChance = max(5 + defenseAttackSkillDiff * 0.1, 0)
+    local dodgeChance = playerClass ~= "HUNTER"
+        and max(5 + defenseAttackSkillDiff * 0.1, 0) or 0
     aura_env.dodgeChance = dodgeChance
     remainingPercent = remainingPercent - dodgeChance
     if remainingPercent <= 0 then
@@ -84,15 +85,16 @@ aura_env.calculateTable = function()
     local blockChance = 0
     local parryChance = 0
     if aura_env.config.isTargetFacingPlayer then
-        -- Parry seems to be 14% vs +3 lvl targets, unaffected by weapon skill
-        if (targetLevel - playerLevel > 2) then
-            parryChance = 14
-        else
-            -- Unknown how it works vs lower lvl targets
-            -- assume the behvaiour is the same as dodge and block
-            parryChance = max(5 + defenseAttackSkillDiff * 0.1, 0)
+        if playerClass ~= "HUNTER" then
+            -- Parry seems to be 14% vs +3 lvl targets, unaffected by weapon skill
+            if (targetLevel - playerLevel > 2) then
+                parryChance = 14
+            else
+                -- Unknown how it works vs lower lvl targets
+                -- assume the behvaiour is the same as dodge and block
+                parryChance = max(5 + defenseAttackSkillDiff * 0.1, 0)
+            end
         end
-
         -- Mobs never have higher than 5% block chance.
         blockChance = min(5, max(5 + defenseAttackSkillDiff * 0.1, 0))
     end
