@@ -9,19 +9,24 @@
 
 -- onInit
 if not aura_env.init then
+    local button = CreateFrame("Button", "GuildRemoveRecentlyDead",aura_env.region, "SecureActionButtonTemplate")
+    button:SetAttribute("type", "macro")
     StaticPopupDialogs["GUILD_UNINVITE"] = {
         text = "Are you sure you want to remove %s from the guild?",
         button1 = "Yes",
         button2 = "No",
         OnAccept = function(self)
             print(self.data.name)
-            RunMacroText("/gremove " .. self.data.name)
+            securecallfunction(RunMacroText("/gremove " .. self.data.name))
+            button:SetAttribute("macrotext", "/gremove " .. self.data.name)     
+            button:Click()
         end,
         timeout = 0,
         whileDead = false,
         hideOnEscape = true,
         showAlert = true
     }
+
     hooksecurefunc("ChatFrame_MessageEventHandler", function(self, event, message)
         if event == "CHAT_MSG_GUILD_DEATHS" then
             local member = strmatch(message, "%[(.-)%] has died")

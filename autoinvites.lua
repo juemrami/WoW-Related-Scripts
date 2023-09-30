@@ -34,14 +34,16 @@ aura_env.OnChatMsgWhisper = function(a, event, msg, source_name, ...)
             break
         end
     end
-    if not is_keyword then return end
+    if not is_keyword then print("not keyword") return end
+    print("should invite ", source_name)
+    
 
-    -- if we're in a BG, cannot test group size nor lead/assist status
-    if not InActiveBattlefield()
-        and IsInGroup()
-        and CanGroupInvite()
+    local canInvite = (
+        CanGroupInvite()
         and not C_PartyInfo.IsPartyFull()
-    then
+        and not InActiveBattlefield()
+    )
+    if canInvite then
         if source_name then
             source_name = strsplit("-", source_name)
             local source_guid = select(10, ...)

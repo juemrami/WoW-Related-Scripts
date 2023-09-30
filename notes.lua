@@ -116,7 +116,7 @@ local a = function(event, ...)
         if unit and IsModifierKeyDown() then
             local plate = C_NamePlate.GetNamePlateForUnit(unit)
             local guid = UnitGUID(unit)
-            local npcID = select(6, strsplit("-", guid))
+         updateTable = select(6, strsplit("-", guid))
             local health = UnitHealth(unit)
             if npcID then npcID = tonumber(npcID) end
             if aura_env.config.healthModule and health then
