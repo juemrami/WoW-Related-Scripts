@@ -10,7 +10,7 @@ aura_env.onEvent = function(event, ...)
             or event == "OPTIONS" or event == "STATUS")
     then
         aura_env.resetTable()
-        aura_env.calculateTable()
+        aura_env.makeTable()
         return true
     end
 end
@@ -26,7 +26,7 @@ aura_env.resetTable = function()
     aura_env.hitChance = 0
     aura_env.bonusWeaponSkill = 0
 end
-aura_env.calculateTable = function()
+aura_env.makeTable = function()
     -- Attack table calculations
     local playerLevel = UnitLevel("player")
     local targetLevel = UnitLevel("target")
@@ -81,6 +81,7 @@ aura_env.calculateTable = function()
     local _glanceHighEnd = max(min(1.2 - (defenseAttackSkillDiff * 0.03), 0.99), 0.2)
     local glanceDR = (_glanceLowEnd + _glanceHighEnd) / 2
     aura_env.glanceDR = (1 - glanceDR) * 100
+    
     -- Block and Parrys
     local blockChance = 0
     local parryChance = 0
