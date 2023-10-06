@@ -2,7 +2,7 @@ aura_env.trackedItems = {
     11020, -- Evergreen Pouch
     15846, -- Salt Shaker
 }
-aura_env.trackedSpells = {
+aura_env.trackedStuns = {
     18560, -- Mooncloth
 }
 aura_env.transmutes = {
@@ -42,7 +42,7 @@ do
         end
     end
     for _, allSpells
-    in ipairs({ aura_env.trackedSpells, aura_env.transmutes })
+    in ipairs({ aura_env.trackedStuns, aura_env.transmutes })
     do
         for _, spellId in ipairs(allSpells) do
             local spellName = GetSpellInfo(spellId)
@@ -56,19 +56,32 @@ do
     end
 end
 -- 11020 15846
--- CLEU:SPELL_CAST_SUCCESS, PLAYER_ENTERING_WORLD:SPELL_UPDATE_COOLDOWN, REMOVE_TRACKED_COOLDOWN
+-- CLEU:SPELL_CAST_SUCCESS, PLAYER_ENTERING_WORLD, SPELL_UPDATE_COOLDOWN, REMOVE_TRACKED_COOLDOWN
 
--- Dont create an entry for a character -> cooldownId until we see that character actually
+-- Dont create an entry for a db[character][cooldownId] until we see that character actually
 -- succesfully cast the proffession cooldown (item or spell)
 aura_env.onEvent = function(allstates, event, ...)
     if aura_env.saved and aura_env.saved.cooldownsByCharacter then
         if event == "PLAYER_ENTERING_WORLD"
             or event == "OPTIONS" or event == "STATUS"
         then
-            -- these will always check for cooldowns
-            -- regardless of it being saved or not
             aura_env.syncSavedCooldowns()
             return aura_env.setAllStates(allstates)
+        elseif event == "COMBAT_LOG_EVENT_UNFILTERED"
+            and select(2, ...) == "SPELL_CAST_SUCCESS"
+        then
+            local sourceGUID = select(4, ...)
+            local spellName = select(13, ...)
+            local spellID = aura_env.trackedSpellNames[spellName]
+            if UnitGUID("player") == sourceGUID and spellID
+            then
+                local lastCast = GetTime() -- timestamp
+                aura_env.saved.cooldownsByCharacter
+                [aura_env.currentCharacter][spellID] = {
+                    lastCast = lastCast,
+                }
+                aura_env.checkOnCooldownUpdate = spellID
+            end
         elseif event == "SPELL_UPDATE_COOLDOWN"
             and aura_env.checkOnCooldownUpdate
         then
@@ -78,26 +91,19 @@ aura_env.onEvent = function(allstates, event, ...)
             local spellID = aura_env.checkOnCooldownUpdate
             local cooldownInfo = aura_env.getCooldownInfo(spellID)
             if cooldownInfo then
-                aura_env.addToCharacterCooldowns(spellID, cooldownInfo)
-                local key = aura_env.currentCharacter .. "-" .. tostring(spellID)
+                aura_env.updateCharacterCooldown(spellID, cooldownInfo)
                 aura_env.checkOnCooldownUpdate = nil
-                aura_env.setAllStates(allstates)
             end
-        elseif event == "COMBAT_LOG_EVENT_UNFILTERED"
-            and select(2, ...) == "SPELL_CAST_SUCCESS"
-        then
-            local sourceGUID = select(4, ...)
-            local spellName = select(13, ...)
-            local spellID = aura_env.trackedSpellNames[spellName]
-            if UnitGUID("player") == sourceGUID and spellID
-            then
-                aura_env.checkOnCooldownUpdate = spellID
-            end
+            return aura_env.setAllStates(allstates)
         elseif event == "REMOVE_TRACKED_COOLDOWN" then
             local key = ...
-            local name, realm , spellID = strsplit("-", key)
-            print(key)
+            local name, realm, spellID = strsplit("-", key)
+            spellID = tonumber(spellID)
             if name and realm and spellID then
+                if aura_env.debug then
+                    print("removing cooldown for key ", key)
+                    print(realm, name, spellID)
+                end
                 local character = name .. "-" .. realm
                 aura_env.saved.cooldownsByCharacter[character][spellID] = nil
                 return aura_env.setAllStates(allstates)
@@ -110,38 +116,28 @@ aura_env.syncSavedCooldowns = function()
     for spellID, _ in pairs(savedCooldowns) do
         local cooldownInfo = aura_env.getCooldownInfo(spellID)
         if cooldownInfo then
-            aura_env.addToCharacterCooldowns(spellID, cooldownInfo)
+            aura_env.updateCharacterCooldown(spellID, cooldownInfo)
         end
-    end
-end
--- differnece here is that if no cooldown info is found
--- we nil the entry in the saved db instead of skipping it
--- this is probably not the correct behaviour but im using it for now
--- for the sake of being able to test the mechanism that only adds to saved when you first cast the spell
-aura_env._syncSavedSpellCooldowns = function()
-    local savedCooldowns = aura_env.saved.cooldownsByCharacter[aura_env.currentCharacter]
-    for spellID, _ in pairs(savedCooldowns) do
-        local cooldownInfo = aura_env.getCooldownInfo(spellID)
-        aura_env.addToCharacterCooldowns(spellID, cooldownInfo)
     end
 end
 
 aura_env.getCooldownInfo = function(spellID)
     if not spellID then return nil end
+    local savedInfo = aura_env.saved.cooldownsByCharacter
+        [aura_env.currentCharacter][spellID]
+    local lastCast = savedInfo and  savedInfo.lastCast
+    -- only query for the spell info when we have a lastCast
+    if not lastCast then return nil end
     local info
-    local savedInfo = aura_env.saved.cooldownsByCharacter[aura_env.currentCharacter][spellID]
+    -- check if the spell is associated with an item
     local itemID = aura_env.spellToItem[spellID]
     if itemID then
         local bagId, slotId, itemInfo = aura_env.searchBagForItem(itemID)
         if bagId and slotId and itemInfo then
             if aura_env.debug then print("associated item id found: ", itemID) end
-            local lastCast, duration, _ = C_Container.GetContainerItemCooldown(bagId, slotId)
-            if savedInfo then
-                lastCast = math.max(savedInfo.lastCast, lastCast)
-                duration = savedInfo.duration
-            end
+            local _, duration, _ = C_Container.GetContainerItemCooldown(bagId, slotId)
             if aura_env.debug then print("lastCast: ", lastCast, "duration: ", duration) end
-            if lastCast > 0 and duration > 0 then
+            if duration > 0 then
                 info = {
                     expirationTime = lastCast + duration,
                     lastCast = lastCast,
@@ -155,17 +151,13 @@ aura_env.getCooldownInfo = function(spellID)
                 }
             end
         end
-    else
-        local lastCast, duration = GetSpellCooldown(spellID)
-        if savedInfo then
-            lastCast = math.max(savedInfo.lastCast, lastCast)
-            duration = savedInfo.duration
-        end
-        -- this might not be neccessary
+    else -- not from item
+        local _, duration = GetSpellCooldown(spellID)
+        -- this might not be necessary, backup.
         if duration < 1 then
             duration = (GetSpellBaseCooldown(spellID) or 0) / 1000
         end
-        if lastCast > 0 then
+        if duration > 0 then
             local spellName, _, icon = GetSpellInfo(spellID)
             info = {
                 expirationTime = lastCast + duration,
@@ -184,13 +176,17 @@ aura_env.getCooldownInfo = function(spellID)
         return info
     end
 end
-aura_env.addToCharacterCooldowns = function(spellID, cooldownInfo)
+aura_env.updateCharacterCooldown = function(spellID, cooldownInfo)
     if spellID then
         aura_env.saved.cooldownsByCharacter[aura_env.currentCharacter]
         [spellID] = cooldownInfo
     end
 end
 aura_env.setAllStates = function(allstates)
+    for _, state in pairs(allstates) do
+        state.show = false
+        state.changed = true
+    end
     for character, cooldowns in pairs(aura_env.saved.cooldownsByCharacter) do
         for spellID, cooldownInfo in pairs(cooldowns) do
             local key = character .. "-" .. tostring(spellID)
@@ -205,31 +201,6 @@ aura_env.setAllStates = function(allstates)
     ViragDevTool:AddData(aura_env.saved.cooldownsByCharacter, "cooldowns db")
     return true
 end
-
-aura_env.setStateForSpell = function(states, key, spellID)
-    local name, realm = strsplit("-", key)
-    if not name or not realm or not spellID then return nil end
-    local character = name .. "-" .. realm
-    local characterCooldowns = aura_env.saved.cooldownsByCharacter[character]
-    if characterCooldowns then
-        local cooldownInfo = characterCooldowns[spellID]
-        if cooldownInfo then
-            states[key] = CopyTable(cooldownInfo)
-            states[key].show = true
-            states[key].changed = true
-            states[key].progressType = "timed"
-            states[key].autoHide = false
-            if aura_env.debug then print("Item added to states with key: ", key) end
-        else
-            if aura_env.debug then print("Item has no duration. no state made") end
-            states[key] = {
-                show = false,
-                changed = true,
-            }
-         end
-        return true
-    end
-end
 aura_env.searchBagForItem = function(itemID)
     if not itemID then return nil end
     for bag = 0, 4 do
@@ -243,6 +214,7 @@ aura_env.searchBagForItem = function(itemID)
         end
     end
 end
+-- call this in OnShow
 aura_env.setClickHandler = function()
     if aura_env.state and aura_env.state.spellID and aura_env.region.icon then
         aura_env.region:SetScript("OnMouseUp", function(self, button)
@@ -256,7 +228,6 @@ end
 
 -- function that prints out NdNhNs from a duration in seconds
 -- if days is 0 it will not be printed
---
 aura_env.formatTime = function(expirationTime, duration, ...)
     if not expirationTime or not duration then return "" end
     local remaining = expirationTime - GetTime()
@@ -273,7 +244,7 @@ aura_env.formatTime = function(expirationTime, duration, ...)
             str = str .. hours .. "h"
         end
         local minutes = math.floor(remaining / 60)
-        if minutes >= 1  and days < 1 then
+        if minutes >= 1 and days < 1 then
             remaining = remaining - (minutes * 60)
             str = str .. minutes .. "m"
         end

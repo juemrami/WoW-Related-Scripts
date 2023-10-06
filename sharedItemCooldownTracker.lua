@@ -2,7 +2,7 @@ aura_env.trackedItems = {
     11020, -- Evergreen Pouch
     15846, -- Salt Shaker
 }
-aura_env.trackedSpells = {
+aura_env.trackedStuns = {
     18560, -- Mooncloth
 }
 aura_env.transmutes = {
@@ -42,7 +42,7 @@ do
         end
     end
     for _, allSpells
-    in ipairs({ aura_env.trackedSpells, aura_env.transmutes })
+    in ipairs({ aura_env.trackedStuns, aura_env.transmutes })
     do
         for _, spellId in ipairs(allSpells) do
             local spellName = GetSpellInfo(spellId)
@@ -79,7 +79,7 @@ aura_env.onEvent = function(allstates, event, ...)
             local spellID = aura_env.checkOnCooldownUpdate
             local cooldownInfo = aura_env.getCooldownInfo(spellID)
             if cooldownInfo then
-                aura_env.addToCharacterCooldowns(spellID, cooldownInfo)
+                aura_env.updateCooldownInfo(spellID, cooldownInfo)
                 local key = aura_env.currentCharacter .. "-" .. tostring(spellID)
                 aura_env.checkOnCooldownUpdate = nil
                 return aura_env.setStateForSpell(allstates, key, spellID)
@@ -111,10 +111,10 @@ aura_env.syncSavedCooldowns = function()
     for spellID, _  in pairs(savedCooldowns) do
             local cooldownInfo = aura_env.getCooldownInfo(spellID)
             if cooldownInfo then
-                aura_env.addToCharacterCooldowns(spellID, cooldownInfo)
+                aura_env.updateCooldownInfo(spellID, cooldownInfo)
             end
         end
-    end
+end
 -- differnece here is that if no cooldown info is found 
 -- we nil the entry in the saved db instead of skipping it
 -- this is probably not the correct behaviour but im using it for now
@@ -123,7 +123,7 @@ aura_env.syncSavedSpellCooldowns = function()
     local savedCooldowns = aura_env.saved.cooldownsByCharacter[aura_env.currentCharacter]
     for spellID, _ in pairs(savedCooldowns) do
         local cooldownInfo = aura_env.getCooldownInfo(spellID)
-        aura_env.addToCharacterCooldowns(spellID, cooldownInfo)
+        aura_env.updateCooldownInfo(spellID, cooldownInfo)
     end
 end
 aura_env.getCooldownInfo = function(spellID)
@@ -181,7 +181,7 @@ aura_env.getCooldownInfo = function(spellID)
         return info
     end
 end
-aura_env.addToCharacterCooldowns = function(spellID, cooldownInfo)
+aura_env.updateCooldownInfo = function(spellID, cooldownInfo)
     if spellID then
         aura_env.saved.cooldownsByCharacter[aura_env.currentCharacter]
         [spellID] = cooldownInfo

@@ -1,5 +1,5 @@
 aura_env.combatHistoryByGUID = {}
-aura_env.getCurrentCritChance = function(guid)
+aura_env.getUnitCritChance = function(guid)
     for _, plate in ipairs(C_NamePlate.GetNamePlates() or {}) do
         local unit = plate.namePlateUnitToken
         if unit and UnitGUID(unit) == guid then
@@ -16,7 +16,7 @@ aura_env.getCurrentCritChance = function(guid)
         end
     end
 end
-aura_env.t1 = function(allstates, event, ...)
+aura_env.onEvent = function(allstates, event, ...)
     local subEvent = select(2, ...)
     if event == "COMBAT_LOG_EVENT_UNFILTERED" then
         local destGUID = select(8, ...)
@@ -32,7 +32,7 @@ aura_env.t1 = function(allstates, event, ...)
                     min = amount,
                     average = amount,
                     max = amount,
-                    critChance = aura_env.getCurrentCritChance(sourceGUID),
+                    critChance = aura_env.getUnitCritChance(sourceGUID),
                 }
             else
                 local state = aura_env.combatHistoryByGUID[sourceGUID]
@@ -40,7 +40,7 @@ aura_env.t1 = function(allstates, event, ...)
                 state.min = math.min(state.min, amount)
                 state.max = math.max(state.max, amount)
                 state.average = (state.average * (state.hits - 1) + amount) / state.hits
-                state.critChance = aura_env.getCurrentCritChance(sourceGUID)
+                state.critChance = aura_env.getUnitCritChance(sourceGUID)
             end
             local targetGUID = UnitGUID("target")
             if targetGUID == sourceGUID then

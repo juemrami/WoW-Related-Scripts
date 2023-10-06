@@ -1,7 +1,7 @@
 aura_env.spell_id = 25146
 aura_env.name = GetSpellInfo(aura_env.spell_id)
 aura_env.icon = select(3, GetSpellInfo(aura_env.spell_id))
-aura_env.cd = 60 * 10
+aura_env.cd = GetSpellBaseCooldown(aura_env.spell_id) / 1000
 if not aura_env.saved then
     aura_env.saved = {
         next_expiration = 0,

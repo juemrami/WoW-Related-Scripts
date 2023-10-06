@@ -29,6 +29,9 @@
 		},
 		{
 			"path": "../../../../_classic_era_/Interface/AddOns/Deathlog"
+		},
+		{
+			"path": "../../../../../../Users/Julio/Downloads/BuyEmAllClassic-v1.0.3"
 		}
 	],
 	"settings": {
@@ -976,14 +979,19 @@
 			"UIDropDownMenu_JustifyText",
 			"MAX_PLAYER_LEVEL",
 			"MODELFRAME_DEFAULT_ROTATION",
-			"DevTools_RunDump"
+			"DevTools_RunDump",
+			"CUSTOM",
+			"FlagsUtil",
+			"GAME",
+			"CombatLog"
 		],
 		"cSpell.words": [
 			"allstates",
 			"hooksecurefunc",
 			"OPTION_TOOLTIP_DISPLAY_RAID_AGGRO_HIGHLIGHT",
 			"strfind",
-			"strsplit"
+			"strsplit",
+			"Stunnable"
 		]
 	}
 }

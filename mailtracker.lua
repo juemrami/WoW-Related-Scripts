@@ -17,9 +17,9 @@ if not aura_env.init then
         name = name ~= "" and name or nil
         WeakAuras.ScanEvents("MAIL_RECIPIENT_UPDATE", name)
     end)
-    aura_env.init = true
     C_ChatInfo.RegisterAddonMessagePrefix("MAIL_TRACKER")
     if aura_env.init then print("Mail Tracker: Hooked and scanning for mail events.") end
+    aura_env.init = true
 end
 aura_env.show_initial = false
 -- MAIL_RECIPIENT_UPDATE, MAIL_SHOW, MAIL_SEND_SUCCESS, MAIL_DELIVERED, CHAT_MSG_ADDON
@@ -173,9 +173,10 @@ aura_env.create_key_and_state = function(mail_info)
         mailIcon = escapeIcon("Interface/Icons/INV_Letter_15"),
         autoHide = false
     }
-    local is_delivered = GetTime() > mail_info.expirationTime
+    local is_delivered = GetTime() >= mail_info.expirationTime
     if is_delivered then
-        state.readyIcon = escapeIcon("Interface/RaidFrame/ReadyCheck-Ready")
+        print("adding icon to delivered mail")
+        state.icon = escapeIcon("Interface/RaidFrame/ReadyCheck-Ready")
     end
     return key, state
 end
@@ -228,6 +229,6 @@ aura_env.custom_text = function(...)
         else
             formatted_name = ("To %s"):format(aura_env.state.recipient)
         end
-        return formatted_name, aura_env.state.readyIcon
+        return formatted_name, aura_env.state.icon
     end
 end

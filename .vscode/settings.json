@@ -255,5 +255,6 @@
         "DISPLAYAGGROHIGHLIGHT",
         "hooksecurefunc",
         "securecallfunction"
-    ]
+    ],
+    "editor.wordWrap": "wordWrapColumn"
 }

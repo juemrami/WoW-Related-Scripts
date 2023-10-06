@@ -1,15 +1,7 @@
-InActiveBattlefield = C_PvP.IsActiveBattlefield
-CanGroupInvite = C_PartyInfo.CanInvite
-InviteUnit = C_PartyInfo.InviteUnit
--- aura_env.config = {
---     keywords = { keys = string , match_case = boolean}
---     whitelist = {
---         enabled = boolean,
---         own_guild = boolean,
---         allowed_guilds = string
---     }
--- }
--- Custom options initialization
+InActiveBattlefield = C_PvP.IsActiveBattlefield or InActiveBattlefield
+CanGroupInvite = C_PartyInfo.CanInvite or CanGroupInvite
+InviteUnit = C_PartyInfo.InviteUnit or InviteUnit
+
 if aura_env.config.keywords.keys then
     local keywords = {}
     for _, word in ipairs({ strsplit(",", aura_env.config.keywords.keys) }) do
