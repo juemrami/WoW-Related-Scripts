@@ -50,11 +50,15 @@ aura_env.makeTable = function()
     -- Entry Calculations
     -- Miss chance
     local missMod = defenseAttackSkillDiff > 10 and 0.2 or 0.1
-    local dualWeildPenalty = IsDualWielding() and 19 or 0
+    local dualWieldPenalty = IsDualWielding() and 19 or 0
     local baseMissChance = 5 + defenseAttackSkillDiff * missMod
     -- TODO: custom option for yellow hit table
     local yellowMissChance = baseMissChance
-    baseMissChance = baseMissChance + dualWeildPenalty
+    if aura_env.config.useYellowAttackTable then
+        baseMissChance = yellowMissChance
+    else
+        baseMissChance = baseMissChance + dualWieldPenalty
+    end
     -- code in 1.12 explicitly adds a modifier that causes the first 1% of +hit gained from talents or gear to be ignored against monsters with more than 10 Defense Skill above the attacking player’s Weapon Skill.
     local hitPenalty = defenseAttackSkillDiff > 10 and 1 or 0
     local missChance = max(baseMissChance - (hitRating - hitPenalty), 0)
@@ -69,7 +73,7 @@ aura_env.makeTable = function()
         -- Parry
         -- Seems to be 14% vs +3 lvl targets, unaffected by weapon skill
         -- Unknown how it works vs lower lvl targets
-        -- assume the behvaiour is the same as dodge and block
+        -- assume the behavior is the same as dodge and block
         local parryChance = aura_env.config.isTargetFacingPlayer
             and ((targetLevel - playerLevel > 2)
                 and 14 or max(5 + defenseAttackSkillDiff * 0.1, 0))
@@ -107,9 +111,9 @@ aura_env.makeTable = function()
     -- A flat (-1.8%) mod placed on your crit gained from auras when fighting +3 level mobs
     -- if aura crit > 0
     local auraCrit = (baseCrit - aura_env.getCritChanceFromAgility())
-    local auraPentaly = (targetLevel - playerLevel > 3 and auraCrit > 0)
+    local auraCritPenalty = (targetLevel - playerLevel > 3 and auraCrit > 0)
         and 1.8 or 0
-    critChance = max(critChance - auraPentaly, 0)
+    critChance = max(critChance - auraCritPenalty, 0)
     aura_env.tableInfo["Crit"] = critChance
 
     -- Generate the Table
@@ -123,7 +127,7 @@ aura_env.makeTable = function()
                 aura_env.tableInfo[attackType] = 0
             end
             remainingChance = remainingChance - aura_env.tableInfo[attackType]
-            if remainingChance < 0 then 
+            if remainingChance < 0 then
                 -- when the table is overflown
                 -- correct the entry to not include overflown amount
                 aura_env.tableInfo[attackType] =
@@ -193,7 +197,9 @@ end
 aura_env.customText = function()
     if aura_env.states[2] and aura_env.states[2].show
         and aura_env.tableInfo then
-        local str = "Attack Table on Target: "
+        local str = aura_env.config.useYellowAttackTable 
+        and "Yellow Attack Table on Target:" 
+        or "Attack Table on Target: "
 
         if aura_env.playerClass == "HUNTER" then
             str = str .. "(Ranged)"

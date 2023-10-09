@@ -73,7 +73,7 @@ aura_env.onEvent = function(allstates, event, ...)
             elseif aura_env.config.showOn == 3 then
                 -- Show On: Stunnable
                 show = stunnable
-            elseif aura_env.config.showOm == 4 then
+            elseif aura_env.config.showOn == 4 then
                 -- Show On: Not Unknown
                 show = stunnable ~= nil
             end

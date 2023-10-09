@@ -32,7 +32,7 @@ aura_env.OnChatMsgWhisper = function(a, event, msg, source_name, ...)
 
     local canInvite = (
         CanGroupInvite()
-        and not C_PartyInfo.IsPartyFull()
+        -- and not C_PartyInfo.IsPartyFull()
         and not InActiveBattlefield()
     )
     if canInvite then

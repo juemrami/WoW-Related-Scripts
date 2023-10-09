@@ -1,15 +1,12 @@
 -- events: PLAYER_ENTERING_WORLD
 aura_env.onEvent = function(event)
     print(event)
-    if event == "PLAYER_ENTERING_WORLD" then
-        aura_env.saved.init = false
-        aura_env.hookDropDrown()
-    elseif event == "STATUS" then
+    if event == "PLAYER_ENTERING_WORLD" or event == "STATUS" then
         aura_env.hookDropDrown()
     end
 end
 aura_env.hookDropDrown = function()
-    if aura_env.saved.init then return end
+    if aura_env.init then return end
     DropDownList1:HookScript("OnShow", function(self)
         if self.dropdown:GetName() == "FriendsDropDown"
             and self.dropdown.name
@@ -34,5 +31,5 @@ aura_env.hookDropDrown = function()
             }, 1)
         end
     end)
-    aura_env.saved.init = true
+    aura_env.init = true
 end

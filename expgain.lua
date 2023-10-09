@@ -1,5 +1,4 @@
-local f = 
-function(event, sentence)
+local f = function(event, sentence)
     if not sentence then return end
     local exp_pattern = "dies, you gain (%d+) experience."
     local bonus_pattern = "(%d+) exp Rested"
@@ -14,5 +13,4 @@ function(event, sentence)
         print(string.format("Raw: %d, Bonus: %d", raw, bonus))
     end
 end
-f()
 

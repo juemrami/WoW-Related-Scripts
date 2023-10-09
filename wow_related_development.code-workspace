@@ -23,15 +23,6 @@
 		},
 		{
 			"path": "../../../../_classic_era_/Interface/AddOns/Bagnon"
-		},
-		{
-			"path": "../../../../_classic_era_/Interface/AddOns/AutoOpenItems"
-		},
-		{
-			"path": "../../../../_classic_era_/Interface/AddOns/Deathlog"
-		},
-		{
-			"path": "../../../../../../Users/Julio/Downloads/BuyEmAllClassic-v1.0.3"
 		}
 	],
 	"settings": {
@@ -983,7 +974,13 @@
 			"CUSTOM",
 			"FlagsUtil",
 			"GAME",
-			"CombatLog"
+			"CombatLog",
+			"WHISPER",
+			"FACTION_YELLOW_COLOR",
+			"NEUTRAL_STATUS_COLOR",
+			"FRIENDLY_STATUS_COLOR",
+			"HOSTILE_STATUS_COLOR",
+			"CHAT_MSG_GUILD"
 		],
 		"cSpell.words": [
 			"allstates",
