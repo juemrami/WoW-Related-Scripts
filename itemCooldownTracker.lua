@@ -2,7 +2,7 @@ aura_env.trackedItems = {
     11020, -- Evergreen Pouch
     15846, -- Salt Shaker
 }
-aura_env.trackedStuns = {
+aura_env.trackedSpells = {
     18560, -- Mooncloth
 }
 aura_env.transmutes = {
@@ -29,7 +29,7 @@ if not aura_env.saved then
         }
     }
 end
-aura_env.currentCharacter = strjoin("-", UnitFullName("player"))
+aura_env.currentCharacter = strjoin("-", UnitFullName("player") or "")
 do
     aura_env.trackedSpellNames = {}
     aura_env.spellToItem = {}
@@ -42,7 +42,7 @@ do
         end
     end
     for _, allSpells
-    in ipairs({ aura_env.trackedStuns, aura_env.transmutes })
+    in ipairs({ aura_env.trackedSpells, aura_env.transmutes })
     do
         for _, spellId in ipairs(allSpells) do
             local spellName = GetSpellInfo(spellId)

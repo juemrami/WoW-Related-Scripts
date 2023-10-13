@@ -20,7 +20,7 @@ aura_env.onEvent = function(states, event, ...)
                 if npcId then
                     local level = UnitLevel(unit)
                     local amount, _, _, _, _, _, isCrit = select(12, ...)
-                    print(amount, isCrit)
+                    -- print(amount, isCrit)
                     if isCrit then
                         amount = amount / 2 -- normalize crits
                     end
@@ -53,7 +53,7 @@ aura_env.onEvent = function(states, event, ...)
     if UnitExists("target")  then
         local targetGUID = UnitGUID("target")
         local level = UnitLevel("target")
-        local npcId = select(6, strsplit("-", targetGUID)) or 0
+        local npcId = targetGUID and select(6, strsplit("-", targetGUID)) or 0
         npcId = tonumber(npcId)
         if npcId then
             if not aura_env.saved.npcDamageHistory[npcId] then

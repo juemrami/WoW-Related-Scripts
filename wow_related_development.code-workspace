@@ -980,12 +980,17 @@
 			"NEUTRAL_STATUS_COLOR",
 			"FRIENDLY_STATUS_COLOR",
 			"HOSTILE_STATUS_COLOR",
-			"CHAT_MSG_GUILD"
+			"CHAT_MSG_GUILD",
+			"YELL",
+			"YELLOW_FONT_COLOR",
+			"SPELL_FAILED_NOT_BEHIND",
+			"FAILED"
 		],
 		"cSpell.words": [
 			"allstates",
 			"hooksecurefunc",
 			"OPTION_TOOLTIP_DISPLAY_RAID_AGGRO_HIGHLIGHT",
+			"SPELLCAST",
 			"strfind",
 			"strsplit",
 			"Stunnable"

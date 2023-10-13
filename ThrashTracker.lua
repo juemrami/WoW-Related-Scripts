@@ -5,8 +5,9 @@ if not aura_env.saved then
     }
 end
 aura_env.onEvent = function(states, event, ...)
-    if event == "PLAYER_ENTERING_WORLD" then
-        print("Trash NPCs:")
+    if event == "PLAYER_ENTERING_WORLD" and 
+    aura_env.config.printSavedOnLoad then
+        print("Thrash NPCs:")
         for npcID, _ in pairs(aura_env.saved.thrashNPCs) do
             print(npcID)
         end
@@ -55,3 +56,7 @@ aura_env.getNamePlateToken = function(unitGUID)
     end
     return "none"
 end
+
+
+-- "You receive loot |cffffffff|Hitem:2589::::::::20:257::::::|h[Linen Cloth]|h|rx2"
+local itemName = strmatch(msg, "%[(.+)%]")

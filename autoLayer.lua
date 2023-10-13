@@ -1,15 +1,19 @@
 aura_env.keywords = {
     "lf layer", "wtb layer", "layer me",
     "layer pls", "layer plz", "any layer",
-    "inv to layer", "lf not layer", "lf non layer"
+    "inv to layer", "lf not layer", "lf non layer",
+    "layer inv"
 }
 aura_env.negations = { "not", "off", "except", "but", "non" }
 aura_env.isUsingNWB = IsAddOnLoaded("NovaWorldBuffs")
+aura_env.blacklist = {
+    -- [playerName] = {lastInvite = 0, lastInviteLayer = 0}
+}
 if not aura_env.isUsingNWB then
     WeakAuras.prettyPrint("Aura '" .. aura_env.id .. "' requires the 'NovaWorldBuffs' addon for layer detection.")
 end
 if not aura_env.saved then aura_env.saved = {} end
--- events: CHAT_MSG_GUILD, CHAT_MSG_CHANNEL
+-- events: CHAT_MSG_GUILD, CHAT_MSG_CHANNEL, GROUP_ROSTER_UPDATE
 aura_env.onEvent = function(event, ...)
     if event == "CHAT_MSG_GUILD"
         or (event == "CHAT_MSG_CHANNEL" and select(9, ...) == "HCElite")
@@ -100,8 +104,36 @@ aura_env.onEvent = function(event, ...)
                 nil,
                 sender
             )
-            -- invite the player
-            InviteUnit(sender)
+            if aura_env.config.blacklistDuration == 0 or
+                not aura_env.isPlayerBlacklisted(sender) then
+                -- invite the player
+                InviteUnit(sender)
+                aura_env.lastPlayerInvited = sender
+            end
+        end
+    elseif event == "GROUP_ROSTER_UPDATE" then
+        -- check if the last player invited accepted the invite
+        if aura_env.lastPlayerInvited then
+            local playerJoinedGroup = false
+            for unit in WA_IterateGroupMembers(false, true) do
+                local name, realm = UnitFullName(unit)
+                realm = realm ~= "" and realm or GetNormalizedRealmName()
+                local fullName = name .. '-' .. realm
+                if fullName == aura_env.lastPlayerInvited then
+                    print(aura_env.lastPlayerInvited .. " joined the group.")
+                    playerJoinedGroup = true
+                    break
+                end
+            end
+            -- add them to blacklist if they did
+            if playerJoinedGroup then
+                aura_env.debug("Adding " .. aura_env.lastPlayerInvited .. " to blacklist.")
+                aura_env.blacklist[aura_env.lastPlayerInvited] = {
+                    lastInvite = GetTime(),
+                    lastInviteLayer = aura_env.getCurrentLayer() or "Unknown"
+                }
+                aura_env.lastPlayerInvited = nil
+            end
         end
     end
 end
@@ -110,6 +142,21 @@ aura_env.canInvite = function()
         and not C_PartyInfo.IsPartyFull()
         and not InActiveBattlefield()
         and not IsInInstance()
+end
+-- aura_env.config.blacklistDuration
+-- Set the amount of time in seconds that a player will be blacklisted for after being invited to a layer. Used to prevent spamming invites to players who are already in your layer. Set to 0 to disable.
+aura_env.isPlayerBlacklisted = function(playerName)
+    local blacklistInfo = aura_env.blacklist[playerName]
+    if blacklistInfo then
+        local isSameLayer = blacklistInfo.lastInviteLayer == (aura_env.getCurrentLayer() or "Unknown")
+        local isWithinBlacklistDuration = GetTime() - blacklistInfo.lastInvite < aura_env.config.blacklistDuration
+        if not isSameLayer or not isWithinBlacklistDuration then
+            aura_env.debug("Removing " .. playerName .. " from blacklist. Conditions met.")
+            aura_env.blacklist[playerName] = nil
+            return false
+        end
+    end
+    return true
 end
 aura_env.debug = function(...)
     if aura_env.config.debug then
@@ -128,4 +175,4 @@ aura_env.getCurrentLayer = function()
         or nil
 end
 aura_env.getCurrentLayer()
--- Instead of using "Unknown" for a layer, allows the aura to use that last known layer associated with the account (layers are preserved across characters).
+-- Instead of using "Unknown" for a layer, allows the aura to use the last known layer associated with the account (layers are preserved across characters).

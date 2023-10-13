@@ -9,7 +9,7 @@
 
 -- onInit
 if not aura_env.init then
-    local button = CreateFrame("Button", "GuildRemoveRecentlyDead",aura_env.region, "SecureActionButtonTemplate")
+    local button = CreateFrame("Button", "GuildRemoveRecentlyDead",nil, "SecureActionButtonTemplate")
     button:SetAttribute("type", "macro")
     StaticPopupDialogs["GUILD_UNINVITE"] = {
         text = "Are you sure you want to remove %s from the guild?",
@@ -17,9 +17,9 @@ if not aura_env.init then
         button2 = "No",
         OnAccept = function(self)
             print(self.data.name)
-            securecallfunction(RunMacroText("/gremove " .. self.data.name))
+            -- securecallfunction(RunMacroText("/gremove " .. self.data.name))
             button:SetAttribute("macrotext", "/gremove " .. self.data.name)     
-            button:Click()
+            button:SetAllPoints(self.button1)
         end,
         timeout = 0,
         whileDead = false,
@@ -27,21 +27,21 @@ if not aura_env.init then
         showAlert = true
     }
 
-    hooksecurefunc("ChatFrame_MessageEventHandler", function(self, event, message)
-        if event == "CHAT_MSG_GUILD_DEATHS" then
-            local member = strmatch(message, "%[(.-)%] has died")
-            _G["LAST_DEAD_GUILD_MEMBER"] = member
-        end
-        if event == "CHAT_MSG_SYSTEM" then
-            local name = strmatch(message, "(.-) has gone offline.")
-            if name and
-                _G["LAST_DEAD_GUILD_MEMBER"] == name then
-                _G["LAST_DEAD_GUILD_MEMBER"] = nil
-                -- RunMacroText("/gremove " .. name)
-                return
-            end
-        end
-    end)
+    -- hooksecurefunc("ChatFrame_MessageEventHandler", function(self, event, message)
+    --     if event == "CHAT_MSG_GUILD_DEATHS" then
+    --         local member = strmatch(message, "%[(.-)%] has died")
+    --         _G["LAST_DEAD_GUILD_MEMBER"] = member
+    --     end
+    --     if event == "CHAT_MSG_SYSTEM" then
+    --         local name = strmatch(message, "(.-) has gone offline.")
+    --         if name and
+    --             _G["LAST_DEAD_GUILD_MEMBER"] == name then
+    --             _G["LAST_DEAD_GUILD_MEMBER"] = nil
+    --             -- RunMacroText("/gremove " .. name)
+    --             return
+    --         end
+    --     end
+    -- end)
 
     aura_env.init = true
 end

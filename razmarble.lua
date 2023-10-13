@@ -1,4 +1,5 @@
 aura_env.bagOrder = {
+    "Bigspirit",
     "Forashona",
     "Baldnfat",
     "Thoriun",
@@ -8,93 +9,95 @@ aura_env.bagOrder = {
     "Griefedhc",
     "Santypaws",
 };
-aura_env.spellID = 589;
-aura_env.destName = "Prowler"
-aura_env.nextCaster = aura_env.bagOrder[1];
-aura_env.spellName = "Fumble";
+aura_env.queuedCaster = aura_env.bagOrder[1];
+aura_env.spellName = "Shadow Word: Pain"; -- "Fumble";
+aura_env.destName = "Prowler" -- "Instructor Razuvious"
+aura_env.marblesCooldown = 60;
+aura_env.bagOfMarblesId = 1191;
+-- wow classic doesnt include the spellID in the combat log
+-- aura_env.spellID = 589; -- 5917
 
-
-aura_env.updateNextCaster = function(currentCaster)
+aura_env.updateCasterQueue = function()
     if not aura_env.bagOrder then return end
-    
+    local currentCaster = aura_env.queuedCaster
     for i = 1, #aura_env.bagOrder do
         if currentCaster == aura_env.bagOrder[i] then
             if aura_env.bagOrder[i + 1] then
-                aura_env.nextCaster = aura_env.bagOrder[i + 1];
+                aura_env.queuedCaster = aura_env.bagOrder[i + 1];
             else
-                aura_env.nextCaster = aura_env.bagOrder[1];
+                aura_env.queuedCaster = aura_env.bagOrder[1];
             end
         end
     end
 end
-aura_env.fn = function(allstates, event, ...)
-    if not allstates[''] then
+-- Events: UNIT_THREAT_LIST_UPDATE, 
+-- CLEU:SPELL_AURA_APPLIED:SPELL_MISSED
+aura_env.onEvent = function(states, event, ...)
+    if not states[''] then
+        print("no states")
         local name, _, icon = GetSpellInfo(aura_env.spellID);
-        allstates[''] = {
-            sourceName = "",
-            destName = "",
+        states[''] = {
             icon = icon,
             name = name,
             progressType = "timed",
             duration = 10,
-            changed = true,
-            show = false,
-            stacks = 0,
+            autoHide = false,
+            expirationTime = GetTime(),
+            sourceName = "None",
+            nextCaster = aura_env.bagOrder[1],
+
         }
     end
     if event == "OPTIONS" then
-        allstates[''].sourceName = aura_env.bagOrder[1]
-        allstates[''].nextCaster = aura_env.bagOrder[2]
-        allstates[''].changed = true
-        allstates[''].show = true
-        allstates[''].stacks = 1
+        states[''].sourceName = aura_env.bagOrder[1]
+        states[''].nextCaster = aura_env.bagOrder[2]
+        states[''].changed = true
+        states[''].show = true
+        states[''].stacks = 1
         return true
     end
-    local subEvent = select(2, ...)
-    local casterName = select(5, ...);
-    local spellName = select(13, ...);
-    local destName = select(9, ...);
-    local spellID = select(10, ...);
-    if subEvent == "SPELL_AURA_APPLIED" then
-        print(event)
-        if (spellID == aura_env.spellID) then
-            print(spellID)
-            if casterName == aura_env.nextCaster then
-                aura_env.updateNextCaster(casterName)
+    local subEvent, _, casterGUID, casterName= select(2, ...)
+    local destGUID, destName, _, _ , _,spellName = select(8, ...);
+    if event == "UNIT_THREAT_LIST_UPDATE" then
+        print(UnitName(...))
+        local enemyUnit = ...
+        if UnitHealth(enemyUnit)  > 0 
+        -- and UnitName(enemyUnit) == aura_env.destName
+        then
+            states[''].show = true;
+            states[''].changed = true;
+        else
+            states[''].show = false;
+            states[''].changed = true;
+        end
+    elseif subEvent == "SPELL_AURA_APPLIED" then
+        print(subEvent)
+        if spellName == aura_env.spellName then
+            if casterName == aura_env.queuedCaster then
+                aura_env.updateCasterQueue()
             end
-            if destName == aura_env.destName then
-                allstates[''].expirationTime = GetTime() + 10;
-                allstates[''].sourceName = casterName;
-                allstates[''].destName = destName;
-                allstates[''].stacks = 1;
-                allstates[''].show = true;
+            -- if destName == aura_env.destName then
+            if true then
+                states[''].expirationTime = GetTime() + 10;
+                states[''].sourceName = casterName;
+                states[''].destName = destName;
+                states[''].stacks = 1;
+                states[''].show = true;
             end
-            allstates[''].nextCaster = aura_env.nextCaster
-            allstates[''].changed = true;
+            states[''].nextCaster = aura_env.queuedCaster
+            states[''].changed = true;
             return true;
         end
     elseif subEvent == "SPELL_MISSED" then
-        local isExpired = allstates[''].expirationTime 
-        and allstates[''].expirationTime < GetTime()
-        allstates['misses'] = {
-            show = true,
-            changed = true,
-            progressType = "timed",
-            duration = 2,
-            sourceName = casterName,
-            autoHide = true,
-            expirationTime = GetTime() + 2,
-        }
-        if spellID == aura_env.spellID then
-            if casterName == aura_env.nextCaster then
-                aura_env.updateNextCaster(casterName);
-                allstates[''].nextCaster = aura_env.nextCaster
-                allstates[''].changed = true;
+        WeakAuras.ScanEvents("RAZ_MARBLE_CAST_MISSED")
+        if spellName == aura_env.spellName then
+            if casterName == aura_env.queuedCaster then
+                aura_env.updateCasterQueue();
+                states[''].nextCaster = aura_env.queuedCaster
+                states[''].changed = true;
             end
-            if isExpired then
-                allstates[''].stacks = 0;
-                allstates[''].show = false;
-                allstates[''].changed = true;
+            if casterGUID == UnitGUID("player") then
+                -- notify WA users of new stack 
             end
         end
     end

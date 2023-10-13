@@ -245,7 +245,13 @@
         "UIDropDownMenu_AddButton",
         "ERR_ITEM_LOCKED",
         "InterfaceOverrides",
-        "COMPACT_UNIT_FRAME_PROFILE_DISPLAYAGGROHIGHLIGHT"
+        "COMPACT_UNIT_FRAME_PROFILE_DISPLAYAGGROHIGHLIGHT",
+        "NWB_CurrentLayer",
+        "UnitDefense",
+        "SPELL_FAILED_NOT_BEHIND",
+        "YELLOW_FONT_COLOR",
+        "GetNumSkillLines",
+        "GetSkillLineInfo"
     ],
     "cSpell.enabled": true,
     "cSpell.enableFiletypes": [

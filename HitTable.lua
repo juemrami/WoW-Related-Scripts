@@ -215,6 +215,14 @@ aura_env.customText = function()
         for _, hitType in pairs(aura_env.tableEntries) do
             local chance = aura_env.tableInfo[hitType]
             local line = ("\n%s: %.01f%%"):format(hitType, chance)
+            if hitType == "Miss" 
+            and aura_env.config.useYellowAttackTable
+            then 
+                chance = YELLOW_FONT_COLOR:WrapTextInColorCode(
+                    ("%.01f%%"):format(chance)
+                )
+                line = ("\n%s: %s"):format(hitType, chance)
+            end
             if hitType == "Glancing" then
                 local key = "Glance DR"
                 line = line .. (("\n%s: %0.1f%%"):format(
