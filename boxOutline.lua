@@ -36,13 +36,14 @@ aura_env.updateRegionSize = function(scale)
     -- aura_env.region:SetRegionHeight(height * (1/scale))
     -- print("Olds texture dims: " .. width .. " x " .. height .. " -> " .. width * scale .. " x " .. height * scale)
     aura_env.region:SetScale(currentSize * (1/scale))
-    print("Old scale: ", currentSize, ". New scale: ", currentSize * (1/scale))
+    -- print("Old scale: ", currentSize, ". New scale: ", currentSize * (1/scale))
 end
 -- events: PLAYER_ENTERING_WORLD, OPTIONS
 aura_env.onEvent = function(event, ...)
     print(event, aura_env.state)
     if event == "OPTIONS" then
         -- when options are changed, update the preferred dimension for the given camera zoom
+        aura_env.region:SetScale(1)
         aura_env.saved.setupZoom = GetCameraZoom() > 10 
             and GetCameraZoom()
     end

@@ -251,16 +251,24 @@
         "SPELL_FAILED_NOT_BEHIND",
         "YELLOW_FONT_COLOR",
         "GetNumSkillLines",
-        "GetSkillLineInfo"
+        "GetSkillLineInfo",
+        "DevTool"
     ],
     "cSpell.enabled": true,
     "cSpell.enableFiletypes": [
         "lua"
     ],
     "cSpell.words": [
+        "allstates",
         "DISPLAYAGGROHIGHLIGHT",
+        "Flamestrike",
+        "Frostfire",
         "hooksecurefunc",
-        "securecallfunction"
+        "INVSLOT",
+        "Pyroblast",
+        "REGEN",
+        "securecallfunction",
+        "weakaura"
     ],
     "editor.wordWrap": "wordWrapColumn"
 }

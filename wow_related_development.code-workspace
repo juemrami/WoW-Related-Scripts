@@ -5,24 +5,6 @@
 		},
 		{
 			"path": "../../../../_classic_era_/Interface/AddOns/ClassicHealPrediction"
-		},
-		{
-			"path": "../../../../_classic_era_/Interface/AddOns/BuyEmAllClassic"
-		},
-		{
-			"path": "../../../../_classic_era_/Interface/AddOns/WeakAuras"
-		},
-		{
-			"path": "../../../../_classic_era_/Interface/AddOns/LayerHopper"
-		},
-		{
-			"path": "../../../../_classic_era_/Interface/AddOns/RXPGuides"
-		},
-		{
-			"path": "../../../../_classic_era_/Interface/AddOns/Leatrix_Plus"
-		},
-		{
-			"path": "../../../../_classic_era_/Interface/AddOns/Bagnon"
 		}
 	],
 	"settings": {
@@ -984,16 +966,80 @@
 			"YELL",
 			"YELLOW_FONT_COLOR",
 			"SPELL_FAILED_NOT_BEHIND",
-			"FAILED"
+			"FAILED",
+			"max",
+			"INVSLOT_MAINHAND",
+			"INVSLOT_OFFHAND",
+			"BackdropTemplateMixin",
+			"table",
+			"UnitClass",
+			"strsub",
+			"UnitClassBase",
+			"Minimap",
+			"bit",
+			"wipe",
+			"CreateColor",
+			"WOW_PROJECT_ID",
+			"C_Spell",
+			"strupper",
+			"C_QuestLog",
+			"gsub",
+			"strlen",
+			"tremove",
+			"COMBATLOG_OBJECT_AFFILIATION_MINE",
+			"AuraUtil",
+			"C_SpecializationInfo",
+			"date",
+			"C_PetBattles",
+			"C_ChallengeMode",
+			"C_TooltipInfo",
+			"C_GamePad",
+			"Saturate",
+			"Mixin",
+			"Lerp",
+			"C_VoiceChat",
+			"GetCVar",
+			"C_CVar",
+			"C_TTSSettings",
+			"Round",
+			"gmatch",
+			"UnitSex",
+			"C_SuperTrack",
+			"C_PlayerInteractionManager",
+			"difftime",
+			"C_DateAndTime",
+			"time",
+			"strsplittable",
+			"C_AddOns",
+			"C_GossipInfo",
+			"BACKPACK_CONTAINER",
+			"C_PlayerInfo",
+			"WOW_PROJECT_MAINLINE",
+			"WOW_PROJECT_CLASSIC",
+			"SetPortraitTexture",
+			"C_ActionBar",
+			"C_PetJournal",
+			"C_Minimap",
+			"C_TaskQuest",
+			"C_Scenario",
+			"C_ScenarioInfo",
+			"C_MountJournal",
+			"C_ToyBox",
+			"C_CurrencyInfo",
+			"class",
+			"STR"
 		],
 		"cSpell.words": [
 			"allstates",
 			"hooksecurefunc",
+			"INVSLOT",
 			"OPTION_TOOLTIP_DISPLAY_RAID_AGGRO_HIGHLIGHT",
+			"REGEN",
 			"SPELLCAST",
 			"strfind",
 			"strsplit",
-			"Stunnable"
+			"Stunnable",
+			"weakaura"
 		]
 	}
 }
