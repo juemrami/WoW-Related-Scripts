@@ -116,7 +116,6 @@ aura_env.onEvent = function(states, event, ...)
             end
             anyChanged = true
         end
-        -- anyChanged = aura_env.clearStaleStates(states) or anyChanged
         return anyChanged
     end
     if subEvent == "UNIT_DIED" then
@@ -140,7 +139,7 @@ end
 ---@param unitGUID any
 ---@return string? unitToken
 aura_env.getValidUnit = function(unitName, unitGUID)
-    print("getting unit for ", unitName)
+    -- print("getting unit for ", unitName)
     if unitGUID == WeakAuras.myGUID then
         return "player"
     end
@@ -152,7 +151,7 @@ aura_env.getValidUnit = function(unitName, unitGUID)
             and aura_env.whitelist.length > 0
             and not aura_env.whitelist[unitName] 
         then
-            print(unitName, " not in whitelist")
+            -- print(unitName, " not in whitelist") 
             return nil
         end
         local unitHasTankRole = function(unit)
@@ -161,7 +160,7 @@ aura_env.getValidUnit = function(unitName, unitGUID)
         end
         for unit in WA_IterateGroupMembers() do
             if UnitGUID(unit) == unitGUID then
-                print ("found unit ", unitName)
+                -- print ("found unit ", unitName)
                 unitToken = unit
                 break
             end
@@ -169,14 +168,14 @@ aura_env.getValidUnit = function(unitName, unitGUID)
         if unitToken then
             if aura_env.config.onlyShowTanks and UnitInRaid(unitToken) then
                 if not unitHasTankRole(unitToken) then
-                    print("unit is not a tank")
+                    -- print("unit is not a tank")
                     return nil
                 end
             end
-            print("returning unit ", unitToken, " for ", unitName)
+            -- print("returning unit ", unitToken, " for ", unitName)
             return unitToken
         end
-        print("no match found for ", unitName)
+        -- print("no match found for ", unitName)
     end
 end
 

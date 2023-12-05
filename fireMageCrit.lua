@@ -77,7 +77,7 @@ aura_env.talentData = {
     }
 }
 
-aura_env.lastUpdate = 0
+aura_env.lastCheck = 0
 aura_env.throttle = 1
 
 -- events: PLAYER_DAMAGE_DONE_MODS, COMBAT RATING UPDATE, CLEU:SPELL_AURA_APPLIED:SPELL_AURA_APPLIED_DOSE:SPELL_AURA_REMOVED, PLAYER_TARGET_CHANGED
@@ -85,7 +85,7 @@ aura_env.onEvent = function(states, event, ...)
     if event == "COMBAT_LOG_EVENT_UNFILTERED" then
         local changed = aura_env.auraHandler(...)
         if changed then 
-            aura_env.lastUpdate = 0
+            aura_env.lastCheck = 0
         else 
             return false 
         end
@@ -96,16 +96,15 @@ aura_env.onEvent = function(states, event, ...)
     then
         return false
     end
-
-    if GetTime() > aura_env.lastUpdate + aura_env.throttle then
+    local currentTime = GetTimePreciseSec()
+    if currentTime > aura_env.lastCheck + aura_env.throttle then
+        -- print("last update: ", aura_env.lastCheck, "time: ", currentTime, "throttle: ", aura_env.throttle, "diff: ", currentTime - aura_env.lastCheck)
         print("updating ", event )
         local baseFireCrit = GetSpellCritChance(aura_env.FIRE_SCHOOL_ID)
-        -- Combustion gives an additional 50% fire crit
-        -- plus 10% for each stack of the buff, start with 1 stack.
-        local combustionCrit = aura_env.combustionStacks > 0
-            and (50 + aura_env.combustionStacks * 10) or 0
+        -- Combustion gives an additional 10% for each stack of the buff, start with 1 stack.
+        local combustionCrit = aura_env.combustionStacks * 10
         -- print("combustion crit: " .. combustionCrit)
-        
+
         -- if target is afflicted by imp scorch base fire crit is +5%
         local impScorchDebuffCrit = 0
         if aura_env.isValidUnit("target") then
@@ -148,9 +147,8 @@ aura_env.onEvent = function(states, event, ...)
             state.spellCrit = spellCrit
             states[spellName] = state
         end
-        if anyStateChanged then
-            aura_env.lastUpdate = GetTime()
-        end
+
+        aura_env.lastCheck = currentTime
         return anyStateChanged
     end
 end

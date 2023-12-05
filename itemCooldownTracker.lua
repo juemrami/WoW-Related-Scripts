@@ -12,19 +12,21 @@ aura_env.transmutes = {
 aura_env.debug = true
 if not aura_env.saved then
     aura_env.saved = {
+        ---@class cooldownInfo 
+        ---@field expirationTime number?
+        ---@field lastCast number Unix timestamp in seconds when last cast 
+        ---@field duration number?
+        ---@field icon string|number?
+        ---@field name string?
+        ---@field owner string?
+        ---@field spellID string?
+        ---@field itemID string?
+        ---@field fromItem boolean?
+
+        ---@type table<string, table<number, cooldownInfo>>
         cooldownsByCharacter = {
             -- [characterName] = {
-            --     [spellID] = {
-            --         expirationTime: number,
-            --         lastCast: number,
-            --         duration: number,
-            --         icon: string,
-            --         name: string,
-            --         owner: string,
-            --         spellID: string,
-            --         itemID: string,
-            --         fromItem: boolean,
-            --     },
+            --     [spellID]: cooldownInfo
             -- },
         }
     }
@@ -73,11 +75,13 @@ aura_env.onEvent = function(allstates, event, ...)
             local sourceGUID = select(4, ...)
             local spellName = select(13, ...)
             local spellID = aura_env.trackedSpellNames[spellName]
-            if UnitGUID("player") == sourceGUID and spellID
+            if UnitGUID("player") == sourceGUID 
+                and spellID
             then
-                local lastCast = GetTime() -- timestamp
+                local lastCast = time() -- timestamp
                 aura_env.saved.cooldownsByCharacter
-                [aura_env.currentCharacter][spellID] = {
+                    [aura_env.currentCharacter]
+                        [spellID] = {
                     lastCast = lastCast,
                 }
                 aura_env.checkOnCooldownUpdate = spellID
@@ -111,6 +115,7 @@ aura_env.onEvent = function(allstates, event, ...)
         end
     end
 end
+
 aura_env.syncSavedCooldowns = function()
     local savedCooldowns = aura_env.saved.cooldownsByCharacter[aura_env.currentCharacter]
     for spellID, _ in pairs(savedCooldowns) do
@@ -125,7 +130,7 @@ aura_env.getCooldownInfo = function(spellID)
     if not spellID then return nil end
     local savedInfo = aura_env.saved.cooldownsByCharacter
         [aura_env.currentCharacter][spellID]
-    local lastCast = savedInfo and  savedInfo.lastCast
+    local lastCast = savedInfo and savedInfo.lastCast
     -- only query for the spell info when we have a lastCast
     if not lastCast then return nil end
     local info
@@ -138,8 +143,10 @@ aura_env.getCooldownInfo = function(spellID)
             local _, duration, _ = C_Container.GetContainerItemCooldown(bagId, slotId)
             if aura_env.debug then print("lastCast: ", lastCast, "duration: ", duration) end
             if duration > 0 then
+                ---@type cooldownInfo
                 info = {
-                    expirationTime = lastCast + duration,
+                    expirationTime = 
+                        aura_env.timestampToSystemTime(lastCast) + duration,
                     lastCast = lastCast,
                     duration = duration,
                     icon = itemInfo.iconFileID,
@@ -159,8 +166,10 @@ aura_env.getCooldownInfo = function(spellID)
         end
         if duration > 0 then
             local spellName, _, icon = GetSpellInfo(spellID)
+            ---@type cooldownInfo
             info = {
-                expirationTime = lastCast + duration,
+                expirationTime = 
+                    aura_env.timestampToSystemTime(lastCast) + duration,
                 lastCast = lastCast,
                 duration = duration,
                 icon = icon,
@@ -258,4 +267,12 @@ aura_env.formatTime = function(expirationTime, duration, ...)
         end
     end
     return str
+end
+
+aura_env.timestampToSystemTime = function(timestamp)
+  --- how do i go from a timestamp to a system time?
+  --- first determine the delta between `time()`[timestamp] and `GetTime()`[system uptime] when this function was called
+  -- should a negative value, when added to lastCast gives the system time of the last cast 
+  local delta = GetTime() - time() 
+    return timestamp + delta
 end

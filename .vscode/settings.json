@@ -11,7 +11,8 @@
     },
     "Lua.diagnostics.disable": [
         "deprecated",
-        "duplicate-set-field"
+        "duplicate-set-field",
+        "undefined-global"
     ],
     "Lua.diagnostics.globals": [
         "wipe",
@@ -260,6 +261,7 @@
     ],
     "cSpell.words": [
         "allstates",
+        "coeff",
         "DISPLAYAGGROHIGHLIGHT",
         "Flamestrike",
         "Frostfire",
@@ -268,6 +270,7 @@
         "Pyroblast",
         "REGEN",
         "securecallfunction",
+        "subglow",
         "weakaura"
     ],
     "editor.wordWrap": "wordWrapColumn"

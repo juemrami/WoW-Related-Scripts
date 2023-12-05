@@ -1,0 +1,5 @@
+-- check all enemy nameplates
+-- for each enemy check if: UnitAffectingCombat
+-- if it is check UnitMaxHealth
+-- update max and mininum health pools for all enemies in combat
+-- create a color map from the max to the min health pools

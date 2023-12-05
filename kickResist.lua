@@ -65,7 +65,7 @@ aura_env.onEvent = function(event, ...)
     then
         local interruptedSpell = select(16, ...)
         if aura_env.lastCast and aura_env.lastCast.name == interruptedSpell then
-            aura_env.saved.nonResists = aura_env.saved.nonResists + 1
+            aura_env.saved.total = aura_env.saved.total + 1
         end
     end
 end
@@ -114,7 +114,7 @@ aura_env.onEvent = function(event, ...)
             local lastCastID = select(6, strsplit("-", aura_env.lastCast))
             local lastCastName = GetSpellInfo(lastCastID)
             if lastCastName == interruptedSpell then
-                aura_env.saved.nonResists = aura_env.saved.nonResists + 1
+                aura_env.saved.total = aura_env.saved.total + 1
                 aura_env.lastCast = nil
             end
         end
