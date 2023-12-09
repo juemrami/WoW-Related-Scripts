@@ -32,7 +32,7 @@ aura_env.hook = function(event, arg1)
             --- For showing the currently equipped rune texture
             aura_env.updateEquippedTextures = function()
                 local buttons = EngravingFrame.scrollFrame.buttons;
-                -- foreach button the EngravingFrame scrollFrame
+                -- foreach button in the EngravingFrame scrollFrame
                 for _, button in pairs(buttons) do
                     ---@cast button Button
 
