@@ -6,8 +6,7 @@
         "**/.hg": true,
         "**/CVS": true,
         "**/.DS_Store": true,
-        "**/Thumbs.db": true,
-        "/c:/Program Files (x86)/World of Warcraft/_classic_era_/Interface/AddOns/RXPGuides": true
+        "**/Thumbs.db": true
     },
     "Lua.diagnostics.disable": [
         "deprecated",

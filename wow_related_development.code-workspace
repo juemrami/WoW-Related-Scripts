@@ -8,9 +8,7 @@
 		}
 	],
 	"settings": {
-		"hide-files.files": [
-			"/c:/Program Files (x86)/World of Warcraft/_classic_era_/Interface/AddOns/RXPGuides"
-		],
+		"hide-files.files": [],
 		"Lua.diagnostics.globals": [
 			"StaticPopupDialogs",
 			"ADDON_ACTION_FORBIDDEN",
