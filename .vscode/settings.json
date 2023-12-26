@@ -11,7 +11,8 @@
     "Lua.diagnostics.disable": [
         "deprecated",
         "duplicate-set-field",
-        "undefined-global"
+        "undefined-global",
+        "duplicate-doc-alias"
     ],
     "Lua.diagnostics.globals": [
         "wipe",

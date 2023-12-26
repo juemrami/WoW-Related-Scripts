@@ -12,6 +12,16 @@ aura_env.transmutes = {
 aura_env.debug = true
 if not aura_env.saved then
     aura_env.saved = {
+        ---@class savedCooldown
+        ---@field expirationTime number
+        ---@field lastCast number
+        ---@field duration number
+        ---@field icon string|number?
+        ---@field name string
+        ---@field owner string
+        ---@field spellID number
+        ---@field itemID number?
+        ---@type table<string, table<number, savedCooldown>>
         cooldownsByCharacter = {
             -- [characterName] = {
             --     [spellID] = {

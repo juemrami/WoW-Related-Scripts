@@ -5,6 +5,9 @@
 		},
 		{
 			"path": "../../../../_classic_era_/Interface/AddOns/ClassicHealPrediction"
+		},
+		{
+			"path": "../TradeSkillMaster"
 		}
 	],
 	"settings": {

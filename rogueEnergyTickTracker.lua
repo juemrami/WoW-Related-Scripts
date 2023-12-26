@@ -2,15 +2,11 @@ aura_env.BASE_ENERGY_TICK = 20
 aura_env.AR_ENERGY_TICK = aura_env.BASE_ENERGY_TICK * 2
 aura_env.MAX_ENERGY = UnitPowerMax("player") or 100
 aura_env.previous_energy = UnitPower("player")
-aura_env.last_system_tick = GetTime()
--- aura_env.previous_tick = GetTime()
-aura_env.is_adrenaline_rush_active = function()
-    local spell_id = 13750 -- Adrenaline Rush
-    local localized_name = GetSpellInfo(spell_id)
-    return AuraUtil.FindAuraByName(
-        localized_name, "player", "HELPFUL"
-    ) ~= nil
-end
+---Last seen energy tick as a system time in seconds. `GetTime()`
+aura_env.last_system_tick = nil ---@type number?
+---Last seen energy server tick timestamp. `GetServerTime()`
+aura_env.last_server_tick = nil ---@type number?
+
 aura_env.is_using_fake_tick = false
 --UNIT_POWER_UPDATE, MAX_POWER_UPDATE, TRIGGER:1
 aura_env.onEvent = function(allstates, event, unit, power)
@@ -98,14 +94,37 @@ aura_env.onEvent = function(allstates, event, unit, power)
     aura_env.previous_energy = current_energy
     return true
 end
+
+---Returns the system time in seconds for the next expected energy tick.
+---This signals both the start of the next tick, and the end of current tick.
+---@return number? 
+aura_env.get_next_tick = function()
+-- first check for lastServerTickTimestamp
+-- if available we will calculate the next tick based on server time over system time. this should be more accurate and eliminate drift.
+
+-- if not available, we will calculate the next tick based on system time.
+-- if not lastSystemTick then return nil 
+-- meaning were not sure when the next tick is coming,
+-- otherwise return system tick + 2
+end
+
+aura_env.onHide = function()
+-- lastSeenTick = nil
+end
+
 aura_env.debug = function (...)
     if aura_env.config.debug then
         print(...)
     end
 end
----Returns the system time in seconds for the next expected energy tick.
----This signals both the start of the next tick, and the end of current tick.
-aura_env.getNextTick = function() end
+
+aura_env.is_adrenaline_rush_active = function()
+    local spell_id = 13750 -- Adrenaline Rush
+    local localized_name = GetSpellInfo(spell_id)
+    return AuraUtil.FindAuraByName(
+        localized_name, "player", "HELPFUL"
+    ) ~= nil
+end
 --- notes
 --- supposedly, the tick is actually coming in every 2.03 seconds while your energy is in a regeneration state..
 --- and the energy gained is calculated by energy per second (10) times seconds since last tick (2.03) = 20.3 energy per tick.

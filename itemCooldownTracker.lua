@@ -31,7 +31,7 @@ if not aura_env.saved then
         }
     }
 end
-aura_env.currentCharacter = strjoin("-", UnitFullName("player") or "")
+aura_env.currentCharacter = strjoin("-", UnitFullName("player"))
 do
     aura_env.trackedSpellNames = {}
     aura_env.spellToItem = {}
