@@ -1062,6 +1062,8 @@
 		],
 		"cSpell.words": [
 			"allstates",
+			"attackable",
+			"COMBATLOG",
 			"hooksecurefunc",
 			"INVSLOT",
 			"OPTION_TOOLTIP_DISPLAY_RAID_AGGRO_HIGHLIGHT",
@@ -1071,6 +1073,7 @@
 			"strsplit",
 			"Stunnable",
 			"weakaura"
-		]
+		],
+		"cSpell.enabled": true
 	}
 }

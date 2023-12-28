@@ -8,6 +8,7 @@ aura_env.rangeItems = {
         23719, 23721, 23722, 23715, 23718
     }
 }
+---@param states table<string, WA.State>
 aura_env.onEvent = function(states, event, ...)
     if event == "COMBAT_LOG_EVENT_UNFILTERED" then
         local sourceGUID, _,_,_, destGUID = select(4, ...)
@@ -16,10 +17,11 @@ aura_env.onEvent = function(states, event, ...)
             return
         end
     end
-    local changed = false
-    for _, state in pairs(states) do
-       state.changed = true
-       state.show = false
+    for key, _ in pairs(states) do
+        states[key] = {
+            show = false,
+            changed = true,
+        }
     end
     for unit in WA_IterateGroupMembers() do
         if unit ~= "player" then
@@ -27,21 +29,22 @@ aura_env.onEvent = function(states, event, ...)
             if not states[unit] or states[unit].inRange ~= inRange then
                 local class = select(2, UnitClass(unit))
                 local name = UnitName(unit)
+                ---@class WA.State
                 states[unit] = {
                     inRange = inRange,
                     changed = true,
                     show = true,
                     unit = unit,
                     name = name,
-                    formatName = name and RAID_CLASS_COLORS[class]:WrapTextInColorCode(name),
+                    formatName = name and class and RAID_CLASS_COLORS[class]:WrapTextInColorCode(name),
                     rangeStr = inRange and "in range" or "out of range"
                     
                 }
-                changed = true
+
             end
         end
     end
-    return changed
+    return true
 end
 aura_env.unitInRange = function(unit, range)
     local inRange = false
