@@ -1,25 +1,25 @@
 aura_env.baseSpellIds = {
     -- General kicks
-    72, -- Shield Bash 
-    1766, -- Kick
-    2139, -- Counterspell
-    6552, -- Pummel
-    8042, -- Earth Shock
+    72,     -- Shield Bash
+    1766,   -- Kick
+    2139,   -- Counterspell
+    6552,   -- Pummel
+    8042,   -- Earth Shock
     412787, -- Disrupt
     414621, -- Skull Bash
     425609, -- Rebuke
-    19244, -- Spell Lock
+    19244,  -- Spell Lock
     -- NPC specific kicks
-    10887, -- Crowd Pummel
-    19129, -- Massive Tremor
-    21832, -- Boulder
+    10887,  -- Crowd Pummel
+    19129,  -- Massive Tremor
+    21832,  -- Boulder
 }
 ---Table containing localized spell names. Maps name to base spell id.
 ---This should account for multiple ranks of the same spell.
 ---@type table<spellName, spellID>
 aura_env.trackedSpells = {}
 for _, spellId in ipairs(aura_env.baseSpellIds) do
-    -- localize 
+    -- localize
     local spellName = GetSpellInfo(spellId)
     if spellName then
         aura_env.trackedSpells[spellName] = spellId
@@ -30,34 +30,34 @@ aura_env.recentKicks = {}
 --Events: CLEU:SPELL_CAST_SUCCESS, NAME_PLATE_UNIT_ADDED, NAME_PLATE_UNIT_REMOVED
 aura_env.onEvent = function(states, event, ...)
     if event == "COMBAT_LOG_EVENT_UNFILTERED" then
-    local spellName = select(13, ...)
-    local sourceFlags = select(6, ...)
-    if aura_env.trackedSpells[spellName] and aura_env.isSourceValid(sourceFlags) then
-        -- print("Kick detected: ", spellName)
-        -- print("Source is valid")
-        local sourceGUID = select(4, ...)
-        local spellId = select(12, ...) or aura_env.trackedSpells[spellName]
-        local recentKicks = aura_env.recentKicks[sourceGUID] or {}
-        recentKicks[spellId] = GetTime()
-        aura_env.recentKicks[sourceGUID] = recentKicks
-        
-        if aura_env.config.debug then
-            local sourceName = select(5, ...)
-            local destName = select(9, ...)
-            local spellLink = GetSpellLink(spellId)
-            local str = "Kick detected: %s used %s on %s. %ds cooldown."
-            local cooldown = GetSpellBaseCooldown(spellId)/1000
-            print(str:format(sourceName, spellLink, destName, cooldown))
+        local spellName = select(13, ...)
+        local sourceFlags = select(6, ...)
+        if aura_env.trackedSpells[spellName] and aura_env.isSourceValid(sourceFlags) then
+            -- print("Kick detected: ", spellName)
+            -- print("Source is valid")
+            local sourceGUID = select(4, ...)
+            local spellId = select(12, ...) or aura_env.trackedSpells[spellName]
+            local recentKicks = aura_env.recentKicks[sourceGUID] or {}
+            recentKicks[spellId] = GetTime()
+            aura_env.recentKicks[sourceGUID] = recentKicks
+
+            if aura_env.config.debug then
+                local sourceName = select(5, ...)
+                local destName = select(9, ...)
+                local spellLink = GetSpellLink(spellId)
+                local str = "Kick detected: %s used %s on %s. %ds cooldown."
+                local cooldown = GetSpellBaseCooldown(spellId) / 1000
+                print(str:format(sourceName, spellLink, destName, cooldown))
+            end
+            -- set up state
+            local sourceUnit = aura_env.getNameplateTokenFromGUID(sourceGUID)
+            if sourceUnit then
+                return aura_env.setStatesForUnit(states, sourceUnit)
+            end
         end
-        -- set up state
-        local sourceUnit = aura_env.getUnitTokenFromGUID(sourceGUID)
-        if sourceUnit then 
-            return aura_env.setStateForUnit(states,sourceUnit)
-        end
-       end
     else -- NAME_PLATE_UNIT_ADDED, NAME_PLATE_UNIT_REMOVED
         local unit = ...
-        return aura_env.setStateForUnit(states, unit)
+        return aura_env.setStatesForUnit(states, unit)
     end
 end
 ---Set the state for the unit given a unitToken or guid.
@@ -65,16 +65,20 @@ end
 ---@param unit unitToken?
 ---@param guid unitGUID?
 ---@return boolean changed if state was changed
-aura_env.setStateForUnit = function(states, unit, guid)
+aura_env.setStatesForUnit = function(states, unit, guid)
     if not (unit or guid) then return false end
     local guid = guid or UnitGUID(unit --[[@as string]])
     ---@cast guid string
     local changed = false
     local recentKicks = aura_env.recentKicks[guid]
     for spellID, castTime in pairs(recentKicks or {}) do
-        local icon = GetSpellTexture(spellID)
-        local cooldown = (function ()
-            local baseCD = GetSpellBaseCooldown(spellID)/1000
+        local name, rank, icon = GetSpellInfo(spellID)
+        local cooldown = (function()
+            local exception = aura_env.cooldownException[name]
+            if exception and exception.enabled then
+                return exception.duration
+            end
+            local baseCD = GetSpellBaseCooldown(spellID) / 1000
             return baseCD > 0 and baseCD or 1
         end)()
         local key = guid .. spellID
@@ -104,7 +108,7 @@ aura_env.isSourceValid = function(sourceFlags)
         COMBATLOG_OBJECT_REACTION_NEUTRAL,
         aura_env.config.onlyTrackPlayers and COMBATLOG_OBJECT_CONTROL_PLAYER or COMBATLOG_OBJECT_CONTROL_MASK,
         COMBATLOG_OBJECT_TYPE_MASK
-    ) 
+    )
     local valid = CombatLog_Object_IsA(
         sourceFlags,
         filter
@@ -115,7 +119,7 @@ aura_env.isSourceValid = function(sourceFlags)
     end
     return valid
 end
-aura_env.getUnitTokenFromGUID = function(guid)
+aura_env.getNameplateTokenFromGUID = function(guid)
     if not guid then return nil end
     -- if guid == UnitGUID("target") then
     --     return "target"
@@ -131,6 +135,22 @@ aura_env.getUnitTokenFromGUID = function(guid)
         end
     end
 end
+---@type {[spellName]: {duration: number, enabled: boolean}}
+aura_env.cooldownException = {
+    -- Skull Bash
+    [GetSpellInfo(414621)] = {
+        -- in SoD skull bash shares cd with feral charge.
+        -- however GetSpellBaseCooldown returns 0 for skull bash.
+        duration = 15,
+        enabled = (function()
+            local mode = (C_Seasons and C_Seasons.HasActiveSeason()) 
+                and C_Seasons.GetActiveSeason()
+                or 0
+            return mode == Enum.SeasonID.Placeholder -- SoD
+        end)(),
+    },
+}
+
 ---@alias spellName string
 ---@alias spellID number
 ---@alias unitGUID string

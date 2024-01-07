@@ -70,14 +70,9 @@ aura_env.hook = function(event, arg1)
             end
             hooksecurefunc("EngravingFrame_UpdateRuneList",
                 aura_env.updateEquippedTextures
-            )
-
-            --- to fix the bug where the equipped texture's size off while scrolling 
-            -- **DEPRECATED** in favor of using a static height with the `RUNE_BUTTON_HEIGHT` client global. (used in Blizzard_EngravingUI addon) 
-            -- hooksecurefunc("EngravingFrame_CalculateScroll",
-            --     aura_env.updateEquippedTextures
-            -- )            
+            )            
             aura_env.init = true
+            aura_env.debug("Securely attached to Blizzard's EngravingUI!")
         end
         if aura_env.updateEquippedTextures then
             if event == "RUNE_UPDATED" then
@@ -88,5 +83,18 @@ aura_env.hook = function(event, arg1)
                 aura_env.updateEquippedTextures()
             end
         end
+    end
+    if event == "OPTIONS" then
+        local autoPushSpell = aura_env.config.autoPushSpell and "1" or "0"
+        if autoPushSpell ~= C_CVar.GetCVar("AutoPushSpellToActionBar") then
+            C_CVar.SetCVar("AutoPushSpellToActionBar", autoPushSpell)
+            aura_env.debug("\"AutoPushSpellToActionBar\" - ", autoPushSpell == "1" and "Enabled" or "Disabled")   
+        end
+    end
+end
+aura_env.debug = function(...)
+    if aura_env.config.debug then
+        local auraID = DIM_GREEN_FONT_COLOR:WrapTextInColorCode(aura_env.id..": ")
+        WeakAuras.prettyPrint(auraID.."\n", ...)
     end
 end

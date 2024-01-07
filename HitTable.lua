@@ -122,8 +122,9 @@ aura_env.makeTable = function(useRaidTarget)
         -- Unknown how it works vs lower lvl targets
         -- assume the behavior is the same as dodge and block
         local parryChance = aura_env.config.isTargetFacingPlayer
-            and ((targetLevel - playerLevel > 2)
-                and 14 or max(5 + defenseAttackSkillDiff * 0.1, 0))
+            and ((targetLevel - playerLevel > 2 and 14)
+                or max(5 + defenseAttackSkillDiff * 0.1, 0)
+            )
             or 0
         aura_env.tableInfo["Parry"] = parryChance
 
@@ -142,7 +143,8 @@ aura_env.makeTable = function(useRaidTarget)
     end
     -- Block
     -- Mobs never have higher than 5% block chance.
-    local blockChance = aura_env.config.isTargetFacingPlayer
+    local blockChance = (aura_env.config.isTargetFacingPlayer
+            or aura_env.playerClass == "HUNTER")
         and min(5, max(5 + defenseAttackSkillDiff * 0.1, 0))
         or 0
     aura_env.tableInfo["Block"] = blockChance
@@ -308,16 +310,16 @@ aura_env.customText = function()
         -- print("simulateLevel?", simulateLevel)
         tableStr = aura_env.config.useYellowAttackTable
             and "Special Attack Table on "
-            .. (simulateLevel 
-                and "+"..aura_env.config.maxLevelGap.." " 
+            .. (simulateLevel
+                and "+" .. aura_env.config.maxLevelGap .. " "
                 or "") .. "Target:"
             or "Attack Table on "
-            .. (simulateLevel 
-                and "+"..aura_env.config.maxLevelGap.." " 
+            .. (simulateLevel
+                and "+" .. aura_env.config.maxLevelGap .. " "
                 or "") .. "Target:"
 
         if aura_env.playerClass == "HUNTER" then
-            tableStr = tableStr .. "(Ranged)"
+            tableStr = tableStr .. " (Ranged)"
             aura_env.tableEntries = {
                 "Miss", "Block", "Crit", "Ordinary Hit"
             }

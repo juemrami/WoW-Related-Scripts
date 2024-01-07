@@ -97,9 +97,3 @@ end
 ---@alias slotIdx number
 ---@alias spellID number
 ---@alias runeData {name: string, iconTexture: number, equipmentSlot: slotIdx, learnedAbilitySpellIDs: spellID[], skillLineAbilityID: number}
-
-
-
-
-
-

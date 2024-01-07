@@ -9,16 +9,16 @@ aura_env.onEvent = function(states, event, ...)
             local unitType = strmatch(unit, "(%a+)%d+") or ""
             local N = strmatch(unit, "%a+(%d+)") or ""
             local unitPet = unitType .. "pet" .. N
-            local isUpdate = aura_env.setStateForUnit(states, unit)
+            local isUpdate = aura_env.setStatesForUnit(states, unit)
             if aura_env.config.includePets then
-                isUpdate = aura_env.setStateForUnit(states, unitPet) or isUpdate
+                isUpdate = aura_env.setStatesForUnit(states, unitPet) or isUpdate
             end
             statesUpdated = statesUpdated or isUpdate
         end
         return statesUpdated
     end
 end
-aura_env.setStateForUnit = function(states, unit)
+aura_env.setStatesForUnit = function(states, unit)
     local status = UnitThreatSituation(unit) -- for Any Enemy
     if (status and status > 0) then
         local changed = not states[unit] or states[unit].status ~= status

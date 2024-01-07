@@ -5,7 +5,9 @@ if not aura_env.saved then
     }
 end
 aura_env.oldZoom = GetCameraZoom()
-aura_env.updateFPS = 15
+-- updates once every 15 frames
+-- at 60 fps, this is once every 0.25 seconds
+aura_env.updateFPS = 15 
 aura_env.frameCount = 0
 aura_env.onUpdate = function()
     if aura_env.frameCount % aura_env.updateFPS == 0 then

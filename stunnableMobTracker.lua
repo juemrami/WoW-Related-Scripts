@@ -97,7 +97,7 @@ end
 -- NOT PART OF CUSTOM CODE--
 -- If checked will output the current list of IDs, for NPCs known to not be stunnable, whenever the player loads into the world. The output ids should be copy pasted into the "presetMobIDs" table in the custom code section of the "Actions" tab.
 -- "Always" will make it so that aura is always visible. "Not Stunnable" will show the aura when target is . "Stunnable" will show the aura when the target is known to be stunnable.
-stunnableStatus = {
+local stunnableStatus = {
     display = "Stunnable Status",
     type = "select",
     values = {

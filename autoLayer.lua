@@ -17,6 +17,7 @@ if not aura_env.saved then aura_env.saved = {} end
 aura_env.onEvent = function(event, ...)
     if event == "CHAT_MSG_GUILD"
         or (event == "CHAT_MSG_CHANNEL" and select(9, ...) == "HCElite")
+        and select(12, ...) ~= WeakAuras.myGUID
         and aura_env.isUsingNWB
         and aura_env.canInvite()
     then

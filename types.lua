@@ -6,6 +6,17 @@
 ---@return table<V, K>
 function tInvert(t) end
 
+C_Seasons = {
+    ---@return number? seasonID # `Enum.SeasonID` for the currently active season.
+    GetActiveSeason = function() end,
+    ---@return boolean # `true` if player is logged into a server with an active season.
+    HasActiveSeason = function() end,
+}
+DevTool = {
+    ---@param data any
+    ---@param name string? 
+    AddData = function(self, data, name) end,
+}
 ---@class WA.State
 ---@field changed boolean? # Informs WeakAuras that the states values have changed. Always set this to true for states that were changed.
 ---@field show boolean  # Controls whether the display is visible. Note, that states that have show set to false are automatically removed.
@@ -37,3 +48,29 @@ function tInvert(t) end
 
 ---TSU triggers have the "Tooltip on Mouseover" option available by default in the Display tab. 
 ---However you need to provide specific information in the state in order for the tooltip you want to show. With that option ticked you need to use:
+
+
+---@class WA.CustomConditions : { [string]: WA.CustomConditions.Type|WA.CustomConditions.ComplexCondition }
+---@field expirationTime boolean?
+---@field duration boolean?
+---@field value boolean?
+---@field total boolean?
+---@field stacks boolean?
+
+---Custom function to decide the condition's state
+---@param state WA.State State table of the state to be evaluated
+---@param needle any The key for **selected** (from ui) value from the defined `values` table. 
+---@return boolean
+local _WA_ConditionTest = function(state, needle) end
+
+---@alias WA.CustomConditions.Type "bool"|"string"|"number"|"timer"
+
+---@class WA.CustomConditions.ComplexCondition
+---@field display string # Display name in conditions tab.
+---@field type WA.CustomConditions.Type
+---@field values table<any, string>? # Optional. Only used for `"select"` type. The keys are the possible values for this variable from the TSU. The values are the display names in the conditions tab.
+---@field test (fun(state: WA.State, needle: any): boolean?)? # Custom function to decide the condition's state
+---@field events string[]? # Additional event to test the condition on. Optional.
+
+
+

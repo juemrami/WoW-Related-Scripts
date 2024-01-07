@@ -252,7 +252,8 @@
         "YELLOW_FONT_COLOR",
         "GetNumSkillLines",
         "GetSkillLineInfo",
-        "DevTool"
+        "DevTool",
+        "FlagsUtil"
     ],
     "cSpell.enabled": true,
     "cSpell.enableFiletypes": [
@@ -260,11 +261,13 @@
     ],
     "cSpell.words": [
         "allstates",
+        "CHEPI",
         "coeff",
         "DISPLAYAGGROHIGHLIGHT",
         "Flamestrike",
         "Frostfire",
         "hooksecurefunc",
+        "interruptible",
         "INVSLOT",
         "Pyroblast",
         "REGEN",
@@ -272,5 +275,8 @@
         "subglow",
         "weakaura"
     ],
-    "editor.wordWrap": "wordWrapColumn"
+    "editor.wordWrap": "wordWrapColumn",
+    "wowApi" : {
+        
+    }
 }
