@@ -253,7 +253,13 @@
         "GetNumSkillLines",
         "GetSkillLineInfo",
         "DevTool",
-        "FlagsUtil"
+        "FlagsUtil",
+        "LE_ITEM_QUALITY_COMMON",
+        "UnitPopupButtonBaseMixin",
+        "UIDROPDOWNMENU_MENU_LEVEL",
+        "UIDropDownMenu_CreateInfo",
+        "UnitPopupManager",
+        "PlayerFrame"
     ],
     "cSpell.enabled": true,
     "cSpell.enableFiletypes": [
@@ -278,5 +284,6 @@
     "editor.wordWrap": "wordWrapColumn",
     "wowApi" : {
         
-    }
+    },
+    "editor.minimap.maxColumn": 120
 }

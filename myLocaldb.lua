@@ -26,7 +26,9 @@ frame:SetScript("OnEvent", function(self, event, arg1)
 
         if THEOTAR_TEA_COUNT[dbCharacterKey] == nil then
             -- We have no data for this character, so add its key to table and init values
-            THEOTAR_TEA_COUNT[dbCharacterKey] = {Total=0, Agility=0, Crit=0, Vers=0, Haste=0}
+            THEOTAR_TEA_COUNT[dbCharacterKey] = {
+                Total=0, Agility=0, Crit=0, Vers=0, Haste=0
+            }
             print("Now Tracking Theotar Tea Data for "..dbCharacterKey)
         else 
             -- We do have data for this character

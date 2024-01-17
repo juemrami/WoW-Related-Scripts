@@ -42,13 +42,31 @@ aura_env.bankOpen = false
 aura_env.mailOpen = false
 aura_env.merchantOpen = false
 aura_env.isLooting = false
+-- locals shared between aura_env and the game environment for the button
+local last_locked_item = { bag = nil, slot = nil }
+local pick_if_locked = function(bag, slot)
+    if last_locked_item.bag == bag
+        and last_locked_item.slot == slot then
+        return IsSpellKnown(1804) -- Pick Lock
+            and CastSpellByID(1804)
+    end
+end
 aura_env.setButton = function(bagId, slotId)
     if InCombatLockdown() then return false end
     if not aura_env.button then
         aura_env.button = _G[aura_env.button_id] or
             CreateFrame("Button", aura_env.button_id, aura_env.region, "SecureActionButtonTemplate")
+        -- only register mouse up events
+        -- aura_env.button:RegisterForClicks("LeftButtonUp", "RightButtonUp")
+        aura_env.button:SetScript("PreClick", function()
+            return pick_if_locked(bagId, slotId)
+        end)
         aura_env.button:SetAttribute("type1", "item")
         aura_env.button:SetAllPoints()
+        aura_env.button
+            :SetPushedTexture([[Interface\Buttons\UI-Quickslot-Depress]])
+        aura_env.button
+            :SetHighlightTexture([[Interface\Buttons\ButtonHilight-Square]], "ADD")
     end
     local bag_slot = ("%s %s"):format(bagId, slotId)
     if aura_env.button:GetAttribute("item") ~= bag_slot then
@@ -95,34 +113,31 @@ aura_env.buttonUpdateHandler = function(allstates)
                 if allstates[""] then
                     changed = (allstates[""].bag ~= bag) or (allstates[""].slot ~= slot)
                 end
-                local is_container_locked = aura_env.last_locked_item
-                    and aura_env.last_locked_item.bag == bag
-                    and aura_env.last_locked_item.slot == slot
-                
+                local is_container_locked = last_locked_item
+                    and last_locked_item.bag == bag
+                    and last_locked_item.slot == slot
                 -- disable this for now
                 is_container_locked = false
-                if not is_container_locked then
-                    if changed then
-                        print("AutoOpenItems: Next lootable item - " .. info.hyperlink .. ".")
-                        tinsert(aura_env.openable_items, { bag = bag, slot = slot })
-                    end
-                    --C_Container.UseContainerItem(bag, slot)
-                    aura_env.setButton(bag, slot)
-                    allstates[""] = {
-                        changed = changed,
-                        show = true,
-                        itemName = info.itemName,
-                        icon = info.iconFileID,
-                        count = info.stackCount,
-                        enabled = not info.isLocked and aura_env.setButton(bag, slot),
-                        bag = bag,
-                        slot = slot,
-                    }
-                    aura_env.last_locked_item = nil
-                    return true
-                else
-                    print("AutoOpenItems: Item " .. info.hyperlink .. " locked. Temporarily ignoring.")
+
+
+                if changed then
+                    print("AutoOpenItems: Next lootable item - " .. info.hyperlink .. ".")
                 end
+                --C_Container.UseContainerItem(bag, slot)
+                aura_env.setButton(bag, slot)
+                allstates[""] = {
+                    changed = changed,
+                    show = true,
+                    itemName = info.itemName,
+                    icon = info.iconFileID,
+                    count = info.stackCount,
+                    enabled = not info.isLocked and aura_env.setButton(bag, slot),
+                    bag = bag,
+                    slot = slot,
+                }
+                return true
+            else
+                print("AutoOpenItems: Item " .. info.hyperlink .. " locked. Temporarily ignoring.")
             end
         end
     end
@@ -149,7 +164,7 @@ aura_env.onEvent = function(allstates, event, ...)
                 allstates[""].disabled = true
             end
             aura_env.removeButton()
-            return true 
+            return true
         else
             return aura_env.buttonUpdateHandler(allstates)
         end
@@ -157,7 +172,7 @@ aura_env.onEvent = function(allstates, event, ...)
     if event == "UI_ERROR_MESSAGE"
         and select(2, ...) == ERR_ITEM_LOCKED then
         if allstates[""] then
-            aura_env.last_locked_item = {
+            last_locked_item = {
                 bag = allstates[""].bag,
                 slot = allstates[""].slot
             }
