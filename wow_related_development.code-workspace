@@ -1328,7 +1328,12 @@
 			"LOOT_SPECIALIZATION_DEFAULT",
 			"UnitPopupButtonBaseMixin",
 			"UIDROPDOWNMENU_MENU_LEVEL",
-			"BACKDROP_DARK_DIALOG_32_32"
+			"BACKDROP_DARK_DIALOG_32_32",
+			"DARKYELLOW_FONT_COLOR",
+			"NumberFontNormal",
+			"COMBATLOGDISABLED",
+			"COMBATLOGENABLED",
+			"COMBATLOG"
 		],
 		"cSpell.words": [
 			"allstates",

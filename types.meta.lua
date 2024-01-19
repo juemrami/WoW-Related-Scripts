@@ -78,9 +78,9 @@ local _WA_ConditionTest = function(state, needle) end
 
 
 ---@param button Button
----@param quality integer
----@param itemIDOrLink string|number|nil
----@param suppressOverlays any
+---@param quality integer?
+---@param itemIDOrLink string|number?
+---@param suppressOverlays any # unused as of 1.15
 function SetItemButtonQuality(button, quality, itemIDOrLink, suppressOverlays) end
 
 ---@class EngravingData

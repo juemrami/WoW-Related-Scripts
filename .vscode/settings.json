@@ -259,7 +259,9 @@
         "UIDROPDOWNMENU_MENU_LEVEL",
         "UIDropDownMenu_CreateInfo",
         "UnitPopupManager",
-        "PlayerFrame"
+        "PlayerFrame",
+        "COMBATLOGENABLED",
+        "COMBATLOGDISABLED"
     ],
     "cSpell.enabled": true,
     "cSpell.enableFiletypes": [
