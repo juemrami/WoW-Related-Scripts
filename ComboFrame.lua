@@ -10,7 +10,6 @@
 -- ComboPoints-FX-Dash
 
 -- ComboPoints-AllPointsBG
-
 ------------------------------------------
 -- Data driven layout tweaks for differing numbers of combo point frames.
 -- Indexed by max "usable" combo points (see below)
@@ -175,15 +174,20 @@ local createNewComboPoint = function(parent, index)
 end
 local comboFrameID = "ComboPointPlayerFrame"
 ---@param parent? Frame
-local initComboPointBar = function(parent)
+local createComboPointBar = function(parent)
     ---@class ComboPointBar : Frame
     local bar = CreateFrame("Frame", comboFrameID, parent or PlayerFrame)
     bar:SetSize(126, 18)
-    bar:SetPoint("TOP", parent or PlayerFrame, "BOTTOM", 50, 38)
+    if parent then
+        bar:SetPoint("CENTER", 0, 0)
+    else
+        bar:SetPoint("TOP", PlayerFrame, "BOTTOM", 50, 38)
+        bar:SetFrameLevel(PlayerFrame:GetFrameLevel() + 2) -- copied from blizzard code
+    end
     local barBg = bar:CreateTexture("$parentBackGround", "OVERLAY")
     barBg:SetAtlas("ComboPoints-AllPointsBG", true)
     barBg:SetPoint("TOPLEFT")
-
+    bar.BackGround = barBg
     bar.ComboPoints = {}
     for i = 1, 6 do
         local pointFrame = createNewComboPoint(bar, i)
@@ -198,24 +202,28 @@ local initComboPointBar = function(parent)
     end
     return bar
 end
-
-aura_env.maxPoints = UnitPowerMax("player", Enum.PowerType.ComboPoints)
---- events: PLAYER_ENTERING_WORLD, UNIT_POWER_UPDATE
-aura_env.onEvent = function(event, ...)
-    if event == "PLAYER_ENTERING_WORLD" or not aura_env.bar then
-        if not _G[comboFrameID] then
-            local maxComboPoints = UnitPowerMax("player", Enum.PowerType.ComboPoints)
-            aura_env.bar = initComboPointBar()
-            for i = 1, maxComboPoints do
-                UpdateComboPointLayout(maxComboPoints, aura_env.bar.ComboPoints[i], aura_env.bar.ComboPoints[i - 1])
-                aura_env.bar.ComboPoints[i]:SetShown(true)
-            end
-        else
-            aura_env.bar = _G[comboFrameID]
+aura_env.getComboPointBar = function()
+    if not _G[comboFrameID] then
+        local maxComboPoints = UnitPowerMax("player", Enum.PowerType.ComboPoints)
+        aura_env.bar = createComboPointBar(aura_env.region)
+        ViragDevTool:AddData(aura_env.region, aura_env.id.." region")
+        for i = 1, maxComboPoints do
+            UpdateComboPointLayout(maxComboPoints, aura_env.bar.ComboPoints[i], aura_env.bar.ComboPoints[i - 1])
+            aura_env.bar.ComboPoints[i]:SetShown(true)
         end
         aura_env.bar:SetFrameLevel(
             aura_env.bar:GetParent():GetFrameLevel() + 1
         );
+    else
+        aura_env.bar = _G[comboFrameID]
+    end
+    return aura_env.bar
+end
+aura_env.maxPoints = UnitPowerMax("player", Enum.PowerType.ComboPoints)
+--- events: PLAYER_ENTERING_WORLD, UNIT_POWER_UPDATE
+aura_env.onEvent = function(event, ...)
+    if event == "PLAYER_ENTERING_WORLD" or not aura_env.bar then
+        aura_env.bar = aura_env.getComboPointBar()
         -- in order to move it around with WA.
         -- aura_env.bar:SetParent(aura_env.region.texture)
         -- aura_env.bar:SetParentKey("texture")
@@ -238,6 +246,22 @@ aura_env.onEvent = function(event, ...)
             aura_env.animOut(aura_env.bar.ComboPoints[i])
         end
     elseif event == "OPTIONS" then
+        if aura_env.config.useCustomColor then
+            for i, pointFrame in ipairs(aura_env.bar.ComboPoints) do
+                ---@cast pointFrame ComboPointFrame
+                local r,b,g = aura_env.region.texture:GetVertexColor()
+                local a pointFrame.Point:GetAlpha()
+                pointFrame.Point:SetVertexColor(r,b,g, a)
+                pointFrame.Point:SetBlendMode("BLEND")
+
+            end
+        end
+        if aura_env.config.hideBackground then
+            aura_env.bar.BackGround:SetShown(false)
+        else
+            aura_env.bar.BackGround:SetShown(true)
+        end
+        
         local demoPoints = {1, 3, 4, 0}
         -- aura_env.bar:SetParent(aura_env.region.texture)
         for i = 1, #demoPoints do

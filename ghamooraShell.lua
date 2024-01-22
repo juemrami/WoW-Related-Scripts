@@ -9,8 +9,10 @@ function aura_env.onEvent(states, event, ...)
         local spellName = select(13, ...)
         if spellName ~= AQUA_SHELL then return end
         local destGUID = select(8, ...)
-        local npcID = tonumber(select(6, strsplit("-", destGUID)))
-        if npcID ~= GHAMOORA then return end
+        local npcID = select(6, strsplit("-", destGUID or ""))
+        npcID = tonumber(npcID)
+        print(npcID == GHAMOORA)
+        -- if npcID ~= GHAMOORA then return end
         local subEvent = select(2, ...)
         if subEvent == "SPELL_AURA_APPLIED" then
             states[""] = {
@@ -49,5 +51,6 @@ function aura_env.onEvent(states, event, ...)
             value = 0,
             icon = icon,
         }
+        return true
     end
 end
