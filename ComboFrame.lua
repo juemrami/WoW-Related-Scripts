@@ -277,8 +277,6 @@ aura_env.onEvent = function(event, ...)
         end
     end
 end
-
-
 ---@param point ComboPointFrame
 aura_env.animIn = function(point)
     if (not point.on) then

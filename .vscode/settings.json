@@ -261,7 +261,15 @@
         "UnitPopupManager",
         "PlayerFrame",
         "COMBATLOGENABLED",
-        "COMBATLOGDISABLED"
+        "COMBATLOGDISABLED",
+        "UIDROPDOWNMENU_OPEN_MENU",
+        "UIDROPDOWNMENU_INIT_MENU",
+        "UnitPopupAddFriendMenuButtonMixin",
+        "UnitPopupAddCharacterFriendButtonMixin",
+        "UnitPopupSharedUtil",
+        "UnitPopupMenus",
+        "UNIT_FRAME_DROPDOWN_SUBSECTION_TITLE_INTERACT",
+        "UNIT_FRAME_DROPDOWN_SUBSECTION_TITLE_OTHER"
     ],
     "cSpell.enabled": true,
     "cSpell.enableFiletypes": [

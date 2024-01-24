@@ -1487,7 +1487,11 @@
 			"UnitPlayerOrPetInParty",
 			"UnitPowerType",
 			"UnitReaction",
-			"PutItemInBackpack"
+			"PutItemInBackpack",
+			"UnitPopupAddFriendMenuButtonMixin",
+			"UnitPopupMenus",
+			"UnitPopupAddCharacterFriendButtonMixin",
+			"FRIEND"
 		],
 		"cSpell.words": [
 			"allstates",
