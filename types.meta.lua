@@ -12,9 +12,6 @@ C_Seasons = {
     ---@return boolean # `true` if player is logged into a server with an active season.
     HasActiveSeason = function() end,
 }
-C_Engraving = {
-
-}
 DevTool = {
     ---@param data any
     ---@param name string?
@@ -364,3 +361,18 @@ local StaticPopupDialog = {
 ---@param data `T` # Assigned to the popup's `data` field
 ---@return StaticPopupDialog<T> dialog
 function StaticPopup_Show(which, text_arg1, text_arg2, data, insertedFrame)  end
+
+---[Documentation](https://warcraft.wiki.gg/wiki/API_UnitAttackBothHands)
+---@param unit UnitToken
+---@return number mhBase The unit's base main hand weapon skill (not rating).
+---@return number mhBonus Any modifier to the unit's main hand weapon skill (not rating).
+---@return number ohBase The unit's base offhand weapon skill (not rating)(equal to unarmed weapon skill if unit doesn't dual wield).
+---@return number ohBonus Any modifier to the unit's offhand weapon skill (not rating).
+function UnitAttackBothHands(unit) end
+
+---[Documentation](https://warcraft.wiki.gg/wiki/API_UnitRangedAttack)
+---Returns the unit's ranged attack and modifier.
+---@param unit UnitToken
+---@return number base The unit's base ranged attack skill. `0` if none equipped.
+---@return number modifier The total effect of all modifiers (positive and negative) to ranged attack skill.
+function UnitRangedAttack(unit) end

@@ -41,20 +41,21 @@ aura_env.onEvent = function(states, event, ...)
         or event == "OPTIONS" or event == "STATUS"
     then
         if event == "OPTIONS" then aura_env.lastTargetLevel = nil end
-        local show = aura_env.showFunc[aura_env.config.showOn]()
-        if show then
-            if event == "STATUS" then print("status event show") end
+        local meetsShowCondition = aura_env.showFunc[aura_env.config.showOn]()
+        if meetsShowCondition then
+            -- if event == "STATUS" then print("status event show") end
             local useFakeTarget = aura_env.config.showOn == 3 -- always show
                 and not UnitExists("target")
             -- print("useFakeTarget?", useFakeTarget)
             local targetLevel = useFakeTarget and -1 or UnitLevel("target")
             -- print("targetLevel", targetLevel)
             -- print("lastTargetLevel", aura_env.lastTargetLevel)
-            if not aura_env.lastTargetLevel
-                or aura_env.lastTargetLevel ~= targetLevel
+            if event == "PLAYER_TARGET_CHANGED" and (not aura_env.lastTargetLevel
+                or aura_env.lastTargetLevel ~= targetLevel)
+                or true
             then
                 -- print("level update. remaking table")
-                if event == "STATUS" then print("status event make table") end
+                -- if event == "STATUS" then print("status event make table") end
                 aura_env.resetTable()
                 aura_env.makeTable(useFakeTarget)
                 aura_env.lastTargetLevel = targetLevel
@@ -194,73 +195,26 @@ aura_env.makeTable = function(useRaidTarget)
     aura_env.tableInfo["Crit Cap"] =
         remainingChance + aura_env.tableInfo["Crit"]
 end
-
+------------------------------------------------------------------------
 ---Returns the total weapon skill of the main hand, and off hand weapon if used.
 ---@return integer? mhWeaponSkill
 ---@return integer? ohWeaponSkill
 aura_env.getWeaponSkills = function()
     if aura_env.playerClass == "DRUID" then
         return 5 * UnitLevel("player")
+    elseif aura_env.playerClass == "HUNTER" then
+        local base, bonus = UnitRangedAttack("player")
+        return base + bonus
     end
-    local mhSkill
-    local ohSkill
-    local mhItemId = GetInventoryItemID("player", INVSLOT_MAINHAND)
-    local ohItemId = GetInventoryItemID("player", INVSLOT_OFFHAND)
-    local _, _, mhWeaponType = GetItemInfoInstant(mhItemId or "")
-    local _, _, ohWeaponType = GetItemInfoInstant(ohItemId or "")
-    if not mhWeaponType and not ohWeaponType then return end
-    -- "subType" for weapons can be "One-Handed Axes" or "One-Handed Maces"
-    -- but the skill in the skillLines are labeled as just "Axes" or "Maces"
-    local oneHandedWeaps = {
-        ["Axes"] = true,
-        ["Swords"] = true,
-        ["Maces"] = true
-    }
-    -- closure used to break out of the skillLines loop
-    local areSkillsFound = function()
-        if mhSkill and ohSkill then
-            return true
-        end
-        if mhSkill and not ohWeaponType then
-            return true
-        end
-        return false
-    end
-    -- Search through the skillLines for the weapon skill
-    for i = 1, GetNumSkillLines() do
-        ---@type string, boolean, any, number, any, number
-        local skillName, isHeader, _, baseSkill, _, extraSkill = GetSkillLineInfo(i)
-        if not isHeader then
-            -- Add "One-Handed" to the skill name if it's a one handed weapon
-            -- For classes that can use both 1h and 2h weapons
-            skillName = oneHandedWeaps[skillName]
-                and ("One-Handed " .. skillName) or skillName
-
-            -- Match the weapon type to the skill name
-            if mhWeaponType and not mhSkill
-                and mhWeaponType == skillName
-            then
-                mhSkill = baseSkill + extraSkill
-            end
-            if ohWeaponType and not ohSkill
-                and ohWeaponType == skillName
-            then
-                ohSkill = baseSkill + extraSkill
-            end
-            -- Novelty edge case for fishing poles
-            if mhWeaponType == "Fishing Pole"
-                and skillName == "Fishing"
-            then
-                mhSkill = baseSkill + extraSkill
-            end
-            if areSkillsFound() then
-                break
-            end
-        end
-    end
+    -- note: this api will return unarmed for offhand even when a 2h is equipped
+    local mhBase, mhExtra, ohBase, ohExtra = UnitAttackBothHands("player")
+    local mhSkill = mhBase + mhExtra
+    -- local mhItemId = GetInventoryItemID("player", INVSLOT_MAINHAND)
+    -- local _, mhWeaponID = select(6, GetItemInfoInstant(mhItemId or ""))
+    local ohSkill = IsDualWielding() and (ohBase + ohExtra) or nil
     return mhSkill, ohSkill
 end
-
+------------------------------------------------------------------------
 ---Returns the crit chance gained from agility for the player's class.
 ---Level 60 values from https://vanilla-wow-archive.fandom.com/wiki/Attributes
 ---@return number
@@ -298,6 +252,15 @@ aura_env.customText = function()
         and aura_env.tableInfo
     then
         local tableStr
+        -- Weapon skill: %n | %n if exists
+        local mhSkill, ohSkill = aura_env.getWeaponSkills()
+        if mhSkill then
+            tableStr = ("Weapon Skill(s): %i %s"):format(
+                mhSkill, 
+                ((ohSkill and ohSkill ~= mhSkill) 
+                    and (("| %i\n"):format(ohSkill)) 
+                    or "\n"))    
+        end
         -- Header and Row Names
         local simulateLevel = (
             aura_env.config.capTargetLevel
@@ -308,7 +271,7 @@ aura_env.customText = function()
             and not UnitExists("target")
         )
         -- print("simulateLevel?", simulateLevel)
-        tableStr = aura_env.config.useYellowAttackTable
+        tableStr = tableStr .. (aura_env.config.useYellowAttackTable
             and "Special Attack Table on "
             .. (simulateLevel
                 and "+" .. aura_env.config.maxLevelGap .. " "
@@ -316,7 +279,7 @@ aura_env.customText = function()
             or "Attack Table on "
             .. (simulateLevel
                 and "+" .. aura_env.config.maxLevelGap .. " "
-                or "") .. "Target:"
+                or "") .. "Target:")
 
         if aura_env.playerClass == "HUNTER" then
             tableStr = tableStr .. " (Ranged)"
@@ -357,10 +320,4 @@ aura_env.customText = function()
         return tableStr
     end
 end
--- print("always show?", aura_env.config.forceShow)
--- print("current target exists?", UnitExists("target"))
--- print("target attack-able?", aura_env.playerCanAttack())
--- print("should use fake target?", useFakeTarget)
 
---- extract "%N" from a string
-local parry = ("parry chance increased by 10%"):match("(%d+%%)");

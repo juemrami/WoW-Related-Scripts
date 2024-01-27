@@ -1491,7 +1491,13 @@
 			"UnitPopupAddFriendMenuButtonMixin",
 			"UnitPopupMenus",
 			"UnitPopupAddCharacterFriendButtonMixin",
-			"FRIEND"
+			"FRIEND",
+			"PlayerLocation",
+			"CreateFromMixins",
+			"CanGuildInvite",
+			"GetCurrentRegionName",
+			"UnitNameUnmodified",
+			"IsGuildMember"
 		],
 		"cSpell.words": [
 			"allstates",
