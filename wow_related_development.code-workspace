@@ -1497,7 +1497,8 @@
 			"CanGuildInvite",
 			"GetCurrentRegionName",
 			"UnitNameUnmodified",
-			"IsGuildMember"
+			"IsGuildMember",
+			"IsLeftShiftKeyDown"
 		],
 		"cSpell.words": [
 			"allstates",

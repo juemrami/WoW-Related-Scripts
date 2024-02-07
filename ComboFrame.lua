@@ -180,7 +180,7 @@ local createComboPointBar = function(parent)
     bar:SetSize(126, 18)
     if parent then
         bar:SetPoint("CENTER", 0, 0)
-    else
+    else -- hook onto player frame like blizzard does
         bar:SetPoint("TOP", PlayerFrame, "BOTTOM", 50, 38)
         bar:SetFrameLevel(PlayerFrame:GetFrameLevel() + 2) -- copied from blizzard code
     end

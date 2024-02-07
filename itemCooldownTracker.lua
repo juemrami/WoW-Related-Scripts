@@ -12,9 +12,8 @@ aura_env.transmutes = {
 aura_env.debug = true
 if not aura_env.saved then
     aura_env.saved = {
-        ---@class cooldownInfo 
-        ---@field expirationTime number?
-        ---@field lastCast number Unix timestamp in seconds when last cast 
+        ---@class cooldownInfo
+        ---@field lastCast number Unix timestamp in seconds when last cast
         ---@field duration number?
         ---@field icon string|number?
         ---@field name string?
@@ -75,13 +74,13 @@ aura_env.onEvent = function(allstates, event, ...)
             local sourceGUID = select(4, ...)
             local spellName = select(13, ...)
             local spellID = aura_env.trackedSpellNames[spellName]
-            if UnitGUID("player") == sourceGUID 
+            if UnitGUID("player") == sourceGUID
                 and spellID
             then
                 local lastCast = time() -- timestamp
                 aura_env.saved.cooldownsByCharacter
-                    [aura_env.currentCharacter]
-                        [spellID] = {
+                [aura_env.currentCharacter]
+                [spellID] = {
                     lastCast = lastCast,
                 }
                 aura_env.checkOnCooldownUpdate = spellID
@@ -145,8 +144,6 @@ aura_env.getCooldownInfo = function(spellID)
             if duration > 0 then
                 ---@type cooldownInfo
                 info = {
-                    expirationTime = 
-                        aura_env.timestampToSystemTime(lastCast) + duration,
                     lastCast = lastCast,
                     duration = duration,
                     icon = itemInfo.iconFileID,
@@ -168,8 +165,6 @@ aura_env.getCooldownInfo = function(spellID)
             local spellName, _, icon = GetSpellInfo(spellID)
             ---@type cooldownInfo
             info = {
-                expirationTime = 
-                    aura_env.timestampToSystemTime(lastCast) + duration,
                 lastCast = lastCast,
                 duration = duration,
                 icon = icon,
@@ -200,14 +195,18 @@ aura_env.setAllStates = function(allstates)
         for spellID, cooldownInfo in pairs(cooldowns) do
             local key = character .. "-" .. tostring(spellID)
             allstates[key] = CopyTable(cooldownInfo)
+            local lastCast = cooldownInfo.lastCast
+            local duration = cooldownInfo.duration
             allstates[key].show = true
             allstates[key].changed = true
             allstates[key].progressType = "timed"
             allstates[key].autoHide = false
+            allstates[key].expirationTime = 
+                aura_env.timestampToSystemTime(lastCast) + duration
         end
     end
-    ViragDevTool:AddData(allstates, "all cooldown states")
-    ViragDevTool:AddData(aura_env.saved.cooldownsByCharacter, "cooldowns db")
+    -- ViragDevTool:AddData(allstates, "all cooldown states")
+    -- ViragDevTool:AddData(aura_env.saved.cooldownsByCharacter, "cooldowns db")
     return true
 end
 aura_env.searchBagForItem = function(itemID)
@@ -235,6 +234,7 @@ aura_env.setClickHandler = function()
     end
 end
 
+--- There is a SharedXML mixin/function that does this already. Consider using that instead.
 -- function that prints out NdNhNs from a duration in seconds
 -- if days is 0 it will not be printed
 aura_env.formatTime = function(expirationTime, duration, ...)
@@ -270,9 +270,10 @@ aura_env.formatTime = function(expirationTime, duration, ...)
 end
 
 aura_env.timestampToSystemTime = function(timestamp)
-  --- how do i go from a timestamp to a system time?
-  --- first determine the delta between `time()`[timestamp] and `GetTime()`[system uptime] when this function was called
-  -- should a negative value, when added to lastCast gives the system time of the last cast 
-  local delta = GetTime() - time() 
+    --- how do i go from a timestamp to a system time?
+    --- first determine the delta between `time()`[timestamp] and `GetTime()`[system uptime] when this function was called
+    -- should a negative value, when added to lastCast gives the system time of the last cast
+    local delta = GetTime() - time()
     return timestamp + delta
 end
+
