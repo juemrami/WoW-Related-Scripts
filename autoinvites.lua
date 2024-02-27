@@ -2,9 +2,9 @@ InActiveBattlefield = C_PvP.IsActiveBattlefield or InActiveBattlefield
 CanGroupInvite = C_PartyInfo.CanInvite or CanGroupInvite
 InviteUnit = C_PartyInfo.InviteUnit or InviteUnit
 
-if aura_env.config.keywords.keys then
+if aura_env.config.keywords.whitelist then
     local keywords = {}
-    for _, word in ipairs({ strsplit(",", aura_env.config.keywords.keys) }) do
+    for _, word in ipairs({ strsplit(",", aura_env.config.keywords.whitelist) }) do
         if word then
             word = aura_env.config.keywords.match_case and word or strlower(word)
             word = strtrim(word)

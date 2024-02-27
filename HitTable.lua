@@ -2,7 +2,7 @@
 aura_env.playerClass = select(2, UnitClass("player"))
 
 aura_env.resetTable = function()
-    aura_env.tableEntries = {
+    aura_env.possibleResults = {
         "Miss", "Dodge", "Parry", "Block",
         "Glancing", "Crit", "Ordinary Hit"
     }
@@ -144,8 +144,7 @@ aura_env.makeTable = function(useRaidTarget)
     end
     -- Block
     -- Mobs never have higher than 5% block chance.
-    local blockChance = (aura_env.config.isTargetFacingPlayer
-            or aura_env.playerClass == "HUNTER")
+    local blockChance = aura_env.config.isTargetFacingPlayer
         and min(5, max(5 + defenseAttackSkillDiff * 0.1, 0))
         or 0
     aura_env.tableInfo["Block"] = blockChance
@@ -168,27 +167,29 @@ aura_env.makeTable = function(useRaidTarget)
 
     -- Generate the Table
     local remainingChance = 100
-    for _, attackType
+    for _, attackResult
     -- Entry order: Miss, dodge, parry, glancing blows, blocks, crit, normal hit
-    in ipairs(aura_env.tableEntries)
+    in ipairs(aura_env.possibleResults)
     do
-        if aura_env.tableInfo[attackType] then
+        if aura_env.tableInfo[attackResult] then
             if remainingChance == 0 then
-                aura_env.tableInfo[attackType] = 0
+                aura_env.tableInfo[attackResult] = 0
             end
-            remainingChance = remainingChance - aura_env.tableInfo[attackType]
+            remainingChance = remainingChance - aura_env.tableInfo[attackResult]
             if remainingChance < 0 then
                 -- when the table is overflown
                 -- correct the entry to not include overflown amount
-                aura_env.tableInfo[attackType] =
-                    aura_env.tableInfo[attackType] + remainingChance
+                aura_env.tableInfo[attackResult] =
+                    aura_env.tableInfo[attackResult] + remainingChance
                 remainingChance = 0
             end
         end
     end
+    -- actual hit chance is whatever is left from the 100% after all other entries
     aura_env.tableInfo["Ordinary Hit"] = remainingChance
+    
     -- "Crit Cap" is the same as effective crit.
-    -- It is the amount of space for Crit on the table after Block is included.
+    -- It is the amount of space for Crit on the table after Block.
     -- If the space for calculated Crit is insufficient then,
     -- it is capped at whatever space is left to fill the table.
     -- If there is no space for crit, your crit is capped at 0%, ineffective.
@@ -235,8 +236,10 @@ aura_env.getCritChanceFromAgility = function()
     end
     if level == 25 then
         -- Unconfirmed. For SoD.
-        -- Based on in-game comparing for rogue at lvl 25 vs 60
-        local currentCritPerAgi = .095                -- @ 25. approximately
+        -- Based on in-game comparing for rogue at lvl 25/40 vs 60
+        -- 0.095 @ 25. approximately
+        -- 0.055 @ 40
+        local currentCritPerAgi = 0.055
         local maxCritPerAgi = 1 / agiPerCrit["ROGUE"] -- @ 60; 0.034%
         local levelMod = maxCritPerAgi / currentCritPerAgi
         for class, scale in pairs(agiPerCrit) do
@@ -283,17 +286,17 @@ aura_env.customText = function()
 
         if aura_env.playerClass == "HUNTER" then
             tableStr = tableStr .. " (Ranged)"
-            aura_env.tableEntries = {
+            aura_env.possibleResults = {
                 "Miss", "Block", "Crit", "Ordinary Hit"
             }
         elseif not aura_env.config.isTargetFacingPlayer then
             tableStr = tableStr .. " (Behind)"
-            aura_env.tableEntries = {
+            aura_env.possibleResults = {
                 "Miss", "Dodge", "Glancing", "Crit", "Ordinary Hit"
             }
         end
         -- Row data
-        for _, hitType in pairs(aura_env.tableEntries) do
+        for _, hitType in pairs(aura_env.possibleResults) do
             local chance = aura_env.tableInfo[hitType]
             local line = ("\n%s: %.01f%%"):format(hitType, chance)
             if hitType == "Miss"

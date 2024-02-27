@@ -1,8 +1,7 @@
-## Interface: 90100
+## Interface: 11500
 ## Title: myLocalDb
 ## Notes: Small localDb for tracking info to use with WeakAuras2
 ## Version: 1.0.0
-## SavedVariablesPerCharacter: THEOTAR_TEA_COUNT
-## SavedVariables: THEOTAR_TEA_COUNT
-myLocaldb.lua
+#myLocaldb.lua
 #myLocaldb.xml
+classicPoisonsAddon.lua

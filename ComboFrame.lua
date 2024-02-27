@@ -28,7 +28,7 @@ local comboPointMaxToLayout = {
 ---@param maxPoints number max points that should be shown
 ---@param currentPoint ComboPointFrame
 ---@param prevPoint ComboPointFrame?
-local function UpdateComboPointLayout(maxPoints, currentPoint, prevPoint)
+local function updateComboPointLayout(maxPoints, currentPoint, prevPoint)
     local layout = comboPointMaxToLayout[maxPoints];
 
     currentPoint:SetSize(layout.width, layout.height);
@@ -188,7 +188,7 @@ local createComboPointBar = function(parent)
     barBg:SetAtlas("ComboPoints-AllPointsBG", true)
     barBg:SetPoint("TOPLEFT")
     bar.BackGround = barBg
-    bar.ComboPoints = {}
+    bar.ComboPoints = {} ---@type ComboPointFrame[]
     for i = 1, 6 do
         local pointFrame = createNewComboPoint(bar, i)
         if i == 1 then
@@ -205,15 +205,22 @@ end
 aura_env.getComboPointBar = function()
     if not _G[comboFrameID] then
         local maxComboPoints = UnitPowerMax("player", Enum.PowerType.ComboPoints)
-        aura_env.bar = createComboPointBar(aura_env.region)
-        ViragDevTool:AddData(aura_env.region, aura_env.id.." region")
+        assert(aura_env.region, "WA Region not found. Please report to the author.")
+        local bar = createComboPointBar(aura_env.region) 
+        local parentLevel = bar:GetParent():GetFrameLevel()
+        -- Move frame back -2 level for the bg 
+        -- and then raise the combo points back to parent.
+        bar:SetFrameLevel(parentLevel - 2);
         for i = 1, maxComboPoints do
-            UpdateComboPointLayout(maxComboPoints, aura_env.bar.ComboPoints[i], aura_env.bar.ComboPoints[i - 1])
-            aura_env.bar.ComboPoints[i]:SetShown(true)
+            updateComboPointLayout(
+                maxComboPoints, 
+                bar.ComboPoints[i], 
+                bar.ComboPoints[i - 1]
+            )
+            bar.ComboPoints[i]:SetShown(true)
+            bar.ComboPoints[i]:SetFrameLevel(parentLevel)
         end
-        aura_env.bar:SetFrameLevel(
-            aura_env.bar:GetParent():GetFrameLevel() + 1
-        );
+        aura_env.bar = bar
     else
         aura_env.bar = _G[comboFrameID]
     end
@@ -224,6 +231,7 @@ aura_env.maxPoints = UnitPowerMax("player", Enum.PowerType.ComboPoints)
 aura_env.onEvent = function(event, ...)
     if event == "PLAYER_ENTERING_WORLD" or not aura_env.bar then
         aura_env.bar = aura_env.getComboPointBar()
+        aura_env.bar.BackGround:SetShown(not aura_env.config.hideBackground)
         -- in order to move it around with WA.
         -- aura_env.bar:SetParent(aura_env.region.texture)
         -- aura_env.bar:SetParentKey("texture")
@@ -238,45 +246,64 @@ aura_env.onEvent = function(event, ...)
         if player ~= "player" or powerTypeStr ~= "COMBO_POINTS" then
             return
         end
-        local currentPoints = UnitPower("player", Enum.PowerType.ComboPoints)
-        for i = 1, min(currentPoints, aura_env.maxPoints) do
-            aura_env.animIn(aura_env.bar.ComboPoints[i])
-        end
-        for i = currentPoints + 1, aura_env.maxPoints do
-            aura_env.animOut(aura_env.bar.ComboPoints[i])
-        end
+        aura_env.updateComboPoints()
+    elseif event == "COMBAT_LOG_EVENT_UNFILTERED" 
+    and select(2,...) == "UNIT_DIED"
+    and select(8,...) == UnitGUID("target") 
+    then
+        C_Timer.After(0.5, function() aura_env.updateComboPoints(0) end)
     elseif event == "OPTIONS" then
-        if aura_env.config.useCustomColor then
-            for i, pointFrame in ipairs(aura_env.bar.ComboPoints) do
-                ---@cast pointFrame ComboPointFrame
-                local r,b,g = aura_env.region.texture:GetVertexColor()
-                local a pointFrame.Point:GetAlpha()
-                pointFrame.Point:SetVertexColor(r,b,g, a)
-                pointFrame.Point:SetBlendMode("BLEND")
-
-            end
-        end
         if aura_env.config.hideBackground then
             aura_env.bar.BackGround:SetShown(false)
         else
             aura_env.bar.BackGround:SetShown(true)
         end
-        
-        local demoPoints = {1, 3, 4, 0}
-        -- aura_env.bar:SetParent(aura_env.region.texture)
-        for i = 1, #demoPoints do
-            local currentPoints = demoPoints[i]
-            C_Timer.After(i - 1, function()
-                for i = 1, min(currentPoints, aura_env.maxPoints) do
-                    aura_env.animIn(aura_env.bar.ComboPoints[i])
+        WeakAuras.ScanEvents("COMBO_POINT_DEMO")
+    elseif event == "COMBO_POINT_DEMO" then
+        if WeakAuras.IsOptionsOpen() 
+        and (not aura_env.lastDemoEvent
+        or GetTime() - aura_env.lastDemoEvent >= 1)
+        then
+            aura_env.updateDemoState()
+            C_Timer.After(1, 
+                function()
+                    WeakAuras.ScanEvents("COMBO_POINT_DEMO")
+                    if aura_env then
+                        aura_env.lastDemoEvent = GetTime()
+                    end
                 end
-                for i = currentPoints + 1, aura_env.maxPoints do
-                    aura_env.animOut(aura_env.bar.ComboPoints[i])
-                end
-            end)
+            )
+        elseif not WeakAuras.IsOptionsOpen() then
+            -- this should happen with the status event.
+            -- here just to be safe with the cleanup
+            aura_env.updateComboPoints()
         end
+    elseif event == "STATUS" then
+        aura_env.updateComboPoints()
     end
 end
+aura_env.updateComboPoints = function(forcePoints)
+    local currentPoints = forcePoints 
+        and forcePoints 
+        or UnitPower("player", Enum.PowerType.ComboPoints)
+
+    for i = 1, min(currentPoints, aura_env.maxPoints) do
+        aura_env.animIn(aura_env.bar.ComboPoints[i])
+    end
+    for i = currentPoints + 1, aura_env.maxPoints do
+        aura_env.animOut(aura_env.bar.ComboPoints[i])
+    end
+end
+aura_env.updateDemoState = function()
+    aura_env.demoPoints = aura_env.demoPoints or {5, 4, 3, 2, 1, 0}
+    local points = aura_env.demoPoints[#aura_env.demoPoints]
+    aura_env.updateComboPoints(points)
+    tremove(aura_env.demoPoints)
+    if #aura_env.demoPoints == 0 then
+        aura_env.demoPoints = nil
+    end
+end
+
 ---@param point ComboPointFrame
 aura_env.animIn = function(point)
     if (not point.on) then

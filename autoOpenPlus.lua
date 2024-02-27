@@ -20,6 +20,10 @@ aura_env.allowed_items = {
     [4633]  = true, -- Heavy Bronze Lockbox
     [4632]  = true, -- Ornate Bronze Lockbox
 }
+aura_env.lockpicking_spells = {
+    [1804] = true, -- Pick Lock
+    -- add bs/engi items if needed
+}
 aura_env.watched_frame_events = {
     BANKFRAME_OPENED = true,
     BANKFRAME_CLOSED = true,
@@ -37,50 +41,61 @@ aura_env.button_update_events = {
     LOOT_CLOSED = true,
 }
 aura_env.button_id = "AutoOpenItemsButton"
+aura_env.scantip_id = "AutoOpenItemsScantip"
 
 aura_env.bankOpen = false
 aura_env.mailOpen = false
 aura_env.merchantOpen = false
 aura_env.isLooting = false
 -- locals shared between aura_env and the game environment for the button
-local last_locked_item = { bag = nil, slot = nil }
-local pick_if_locked = function(bag, slot)
-    if last_locked_item.bag == bag
-        and last_locked_item.slot == slot then
-        return IsSpellKnown(1804) -- Pick Lock
-            and CastSpellByID(1804)
-    end
+
+aura_env.getTooltipScanner = function()
+    local tip = _G[aura_env.scantip_id] 
+        or CreateFrame("GameTooltip", aura_env.scantip_id, nil, "SharedTooltipTemplate")
+    tip:SetOwner(WorldFrame, "ANCHOR_NONE")
+    return tip --[[@as GameTooltip]]
 end
-aura_env.setButton = function(bagId, slotId)
+aura_env.isBagItemLocked = function(bag, slot)
+    local tip = aura_env.getTooltipScanner()
+    tip:ClearLines()
+    tip:SetBagItem(bag, slot)
+    for i = 1, tip:NumLines() do
+        local text = _G[aura_env.scantip_id .. "TextLeft" .. i]:GetText()
+        if text and text:find(LOCKED) then
+            return true
+        end
+    end
+    tip:Hide()
+    return false
+end
+aura_env.setAutoOpenButton = function(bagId, slotId, should_unlock)
     if InCombatLockdown() then return false end
-    if not aura_env.button then
-        aura_env.button = _G[aura_env.button_id] or
-            CreateFrame("Button", aura_env.button_id, aura_env.region, "SecureActionButtonTemplate")
+    local button = _G[aura_env.button_id] 
+    if not button then
+        button = CreateFrame("Button", aura_env.button_id, aura_env.region, "SecureActionButtonTemplate")
         -- only register mouse up events
-        -- aura_env.button:RegisterForClicks("LeftButtonUp", "RightButtonUp")
-        aura_env.button:SetScript("PreClick", function()
-            return pick_if_locked(bagId, slotId)
-        end)
-        aura_env.button:SetAttribute("type1", "item")
-        aura_env.button:SetAllPoints()
-        aura_env.button
-            :SetPushedTexture([[Interface\Buttons\UI-Quickslot-Depress]])
-        aura_env.button
-            :SetHighlightTexture([[Interface\Buttons\ButtonHilight-Square]], "ADD")
+        -- button:RegisterForClicks("LeftButtonUp", "RightButtonUp")
+        button:SetAllPoints()
+        button:SetPushedTexture([[Interface\Buttons\UI-Quickslot-Depress]])
+        button:SetHighlightTexture([[Interface\Buttons\ButtonHilight-Square]], "ADD")
     end
     local bag_slot = ("%s %s"):format(bagId, slotId)
-    if aura_env.button:GetAttribute("item") ~= bag_slot then
-        -- print("making button for " .. bag_slot)
-        aura_env.button:SetAttribute("item", bag_slot)
+    if should_unlock then
+        button:SetAttribute("type1", "macro")
+        button:SetAttribute("macrotext", "/cast Pick Lock \n/use " .. bag_slot)
+        -- button:SetAttribute("target-item", bag_slot)
+    else
+        button:SetAttribute("type1", "item")
+        button:SetAttribute("item", bag_slot)
     end
-    aura_env.button:Enable()
-    aura_env.button:Show()
+    button:Enable()
+    button:Show()
 end
 aura_env.removeButton = function()
-    aura_env.button = _G[aura_env.button_id]
-    if aura_env.button then
-        aura_env.button:Hide()
-        aura_env.button:Disable()
+    local button = _G[aura_env.button_id]
+    if button then
+        button:Hide()
+        button:Disable()
     end
 end
 aura_env.onWatchedFramesUpdate = function(_, event, ...)
@@ -111,33 +126,33 @@ aura_env.buttonUpdateHandler = function(allstates)
             then
                 local changed = true
                 if allstates[""] then
-                    changed = (allstates[""].bag ~= bag) or (allstates[""].slot ~= slot)
+                    changed = (allstates[""].bag ~= bag) 
+                        or (allstates[""].slot ~= slot)
                 end
-                local is_container_locked = last_locked_item
-                    and last_locked_item.bag == bag
-                    and last_locked_item.slot == slot
-                -- disable this for now
-                is_container_locked = false
-
+                local is_unlock_required = aura_env.isBagItemLocked(bag, slot)
 
                 if changed then
-                    print("AutoOpenItems: Next lootable item - " .. info.hyperlink .. ".")
+                    print(("AutoOpenItems: Next lootable item - %s. %s")
+                        :format(
+                            info.hyperlink or info.itemName,
+                            is_unlock_required and "Requires unlocking!" or ""
+                        ))
                 end
+                aura_env.setAutoOpenButton(bag, slot, is_unlock_required)
                 --C_Container.UseContainerItem(bag, slot)
-                aura_env.setButton(bag, slot)
                 allstates[""] = {
                     changed = changed,
                     show = true,
                     itemName = info.itemName,
                     icon = info.iconFileID,
                     count = info.stackCount,
-                    enabled = not info.isLocked and aura_env.setButton(bag, slot),
+                    itemId = info.itemID,
+                    isLocked = is_unlock_required,
+                    enabled = not info.isLocked,
                     bag = bag,
                     slot = slot,
                 }
                 return true
-            else
-                print("AutoOpenItems: Item " .. info.hyperlink .. " locked. Temporarily ignoring.")
             end
         end
     end
@@ -148,7 +163,7 @@ aura_env.buttonUpdateHandler = function(allstates)
     return true
 end
 
--- Events: BANKFRAME_OPENED, BANKFRAME_CLOSED, MAIL_SHOW, MERCHANT_SHOW, MERCHANT_CLOSED, LOOT_OPENED, LOOT_CLOSED, PLAYER_REGEN_ENABLED, BAG_UPDATE_DELAYED, BAG_UPDATE_COOLDOWN, PLAYER_INTERACTION_MANAGER_FRAME_HIDE, UI_ERROR_MESSAGE
+-- Events: BANKFRAME_OPENED, BANKFRAME_CLOSED, MAIL_SHOW, MERCHANT_SHOW, MERCHANT_CLOSED, LOOT_OPENED, LOOT_CLOSED, PLAYER_REGEN_ENABLED, BAG_UPDATE_DELAYED, BAG_UPDATE_COOLDOWN, PLAYER_INTERACTION_MANAGER_FRAME_HIDE, UI_ERROR_MESSAGE, ITEM_UNLOXKW
 aura_env.onEvent = function(allstates, event, ...)
     if aura_env.watched_frame_events[event] then
         aura_env.onWatchedFramesUpdate(allstates, event, ...)
@@ -169,13 +184,12 @@ aura_env.onEvent = function(allstates, event, ...)
             return aura_env.buttonUpdateHandler(allstates)
         end
     end
-    if event == "UI_ERROR_MESSAGE"
-        and select(2, ...) == ERR_ITEM_LOCKED then
-        if allstates[""] then
-            last_locked_item = {
-                bag = allstates[""].bag,
-                slot = allstates[""].slot
-            }
+    -- force update button after box has been picked.
+    -- fixes bug where the button would not update after the box has been picked.
+    if event == "UNIT_SPELLCAST_SUCCEEDED" then
+        local unit, _, spellID = ...
+        if unit == "player" and aura_env.lockpicking_spells[spellID] then
+            return aura_env.buttonUpdateHandler(allstates)
         end
-    end
+    end 
 end

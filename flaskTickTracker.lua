@@ -129,7 +129,7 @@ aura_env.onEvent = function(states, event, ...)
         end
     end
     if event == "OPTIONS" then
-        aura_env.setDemoState(states)
+        aura_env.updateDemoState(states)
         return true
     end
 end
@@ -180,7 +180,7 @@ aura_env.getValidUnit = function(unitName, unitGUID)
 end
 
 --- Just to make it pretty when the WA options are opened
-aura_env.setDemoState = function(states)
+aura_env.updateDemoState = function(states)
     local tickHeal = { 9, 69, 123 }
     local tickNum = { 0, 3, 5, 10 }
     local units = { "player", "party1", "target" }
