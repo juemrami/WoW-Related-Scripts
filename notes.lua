@@ -132,4 +132,9 @@ local a = function(event, ...)
 end
 
 
-a()
+-- Secure Handlers inherit SecureHandlerBaseTemplate
+-- could use a WrapScript to wrap "_onleave"
+
+-- Secure Templates inherit all the methods of Secure Drivers
+-- <Script file="SecureStateDriver.lua"/>
+-- <Script file="SecureHoverDriver.lua"/>
