@@ -96,12 +96,13 @@ local tempEnchantSpells = {
 local FALLBACK_ICON = 136242
 -- for 2H classes whenever i add weaponstones & oils
 local playerHasOffhand = IsDualWielding
-local MAX_ROW_BUTTONS = 3 -- todo: add multiple rows for more buttons
-local MAX_ROWS = 3
+local MAX_ROW_BUTTONS = 4 -- todo: add multiple rows for more buttons
+local MAX_ROWS = 4
 local MAX_BUTTONS = MAX_ROW_BUTTONS * MAX_ROWS
 local BUTTON_X_SPACING = 4
 local BUTTON_Y_SPACING = 6
-local hideDelay = 1.25 -- seconds
+local dragMouseButton = "LeftButton"
+local hideDelay = 0.5 -- seconds
 
 --- helper function for sorting by ilvl
 local function getItemLevel(itemID)
@@ -110,71 +111,132 @@ end
 
 local ADDON_ID = "ClassicWeaponEnchants"
 local BASE_BUTTON_ID = ADDON_ID .. "Button"
----@class ClassicPoisonsAddon : Frame
-local addon = CreateFrame("Frame", ADDON_ID, UIParent,"SecureHandlerEnterLeaveTemplate");
+local MAIN_BUTTON_SIZE = 35 -- square
+---@class Addon : Frame
+local addon = CreateFrame("Frame", ADDON_ID, UIParent, "SecureHandlerBaseTemplate");
 addon:RegisterEvent("BAG_UPDATE_DELAYED")
 addon:RegisterEvent("PLAYER_REGEN_DISABLED")
 addon:RegisterEvent("PLAYER_REGEN_ENABLED")
-addon:SetPoint("CENTER", UIParent, "CENTER", 0, 0)
-addon:SetSize(40, 40)
 
-addon.icon = addon:CreateTexture()
-addon.icon:SetTexture(FALLBACK_ICON)
-addon.icon:SetAllPoints(addon, true)
-addon.icon:SetDrawLayer("BACKGROUND")
 --[[
-  Highlight texture shown on mouseover and while the flyout is open.
+  Hover Icon Frame aka the Flyout "toggle".
 ]]
-addon.highlight = addon:CreateTexture()
-addon.highlight:SetTexture([[Interface\Buttons\ButtonHilight-Square]])
-addon.highlight:SetAllPoints(addon, true)
-addon.highlight:SetBlendMode("ADD")
-addon.highlight:Hide()
+---@class FlyoutToggleButton : Frame
+addon.FlyoutButton = CreateFrame("Frame", nil, addon, "SecureHandlerEnterLeaveTemplate, SecureHandlerDragTemplate")
+
+function addon.FlyoutButton:Init()
+  self:SetPoint("CENTER", UIParent, "CENTER", 0, 0)
+  self:SetSize(MAIN_BUTTON_SIZE, MAIN_BUTTON_SIZE)
+  
+  -- Button Icon
+  local iconSize = MAIN_BUTTON_SIZE - 2
+  self.Icon = self:CreateTexture(nil, "BACKGROUND", nil)
+  self.Icon:SetTexture(FALLBACK_ICON)
+  self.Icon:SetTexCoord(0.01, 0.99, 0.01, 0.99)
+  self.Icon:SetSize(iconSize, iconSize)
+  self.Icon:SetPoint("CENTER")
+  -- self.Icon:Hide()
+
+  --- Textures shown on mouseover and while the flyout is open.
+  -- Highlight
+  self.Highlight = self:CreateTexture(nil, "HIGHLIGHT", nil)
+  self.Highlight:SetTexture([[Interface\Buttons\ButtonHilight-Square]])
+  self.Highlight:SetAllPoints(self.Icon, true)
+  self.Highlight:SetBlendMode("ADD")
+  self.Highlight:Hide()
+  
+  -- Border
+  local border = self:CreateTexture(nil, "OVERLAY", nil, 1)
+  local borderSize = iconSize + 2
+  border:SetTexture([[Interface\Buttons\ActionBarFlyoutButton]])
+  border:SetTexCoord(0.01562500, 0.67187500, 0.39843750, 0.72656250)
+  border:SetSize(borderSize, borderSize)
+  border:SetPoint("CENTER", self.Icon)
+  self.Border = border
+  
+  -- Border Shadow
+  local shadowSize = borderSize + 6; 
+  local borderShadow = self:CreateTexture(nil, "OVERLAY", nil, 1)
+  borderShadow:SetTexture([[Interface\Buttons\ActionBarFlyoutButton]])
+  borderShadow:SetTexCoord(0.01562500, 0.76562500, 0.00781250, 0.38281250)
+  borderShadow:SetPoint("CENTER", border)
+  borderShadow:SetSize(shadowSize, shadowSize)
+  borderShadow:Hide()
+  self.BorderShadow = borderShadow
+  
+  -- Arrow texture to indicate flyout direction
+  -- see "Interface\FrameXML\ActionButtonTemplate.xml"
+  self.FlyoutArrow = self:CreateTexture(nil, "OVERLAY", nil, 2)
+  self.FlyoutArrow:SetTexture([[Interface\Buttons\ActionBarFlyoutButton]])
+  self.FlyoutArrow:SetTexCoord(0.625, 0.984375, 0.7421875, 0.828125)
+  self.FlyoutArrow:SetSize(MAIN_BUTTON_SIZE/(1.83), MAIN_BUTTON_SIZE/(3.82))
+  self.FlyoutArrow:SetPoint("CENTER", border, "TOP", 0, 2)
+
+  --- Make Toggle draggable
+  self:SetMovable(true)
+  self:EnableMouse(true)
+  self:RegisterForDrag(dragMouseButton)
+  self:SetScript("OnDragStart", function(self)
+    self:StartMoving()
+  end)
+  self:SetScript("OnDragStop", function(self)
+    self:StopMovingOrSizing()
+  end)
+end
+addon.FlyoutButton:Init()
+
+---@param shown boolean is flyout shown
+local SetFlyoutButtonHoverTextures = function(shown)
+  local flyoutButton = addon.FlyoutButton
+  if shown then 
+    -- flyoutButton.Highlight:Show()
+    flyoutButton.FlyoutArrow:SetRotation(math.pi)
+    flyoutButton.BorderShadow:Show()
+  else
+    flyoutButton.Highlight:Hide()
+    flyoutButton.FlyoutArrow:SetRotation(0)
+    flyoutButton.BorderShadow:Hide()
+  end
+end
+
 --[[
-  Arrow texture to indicate flyout direction
+  The Flyout frame itself.
 ]]
-addon.arrow = addon:CreateTexture()
-addon.arrow:SetTexture([[Interface\Buttons\ActionBarFlyoutButton]])
-addon.arrow:SetTexCoord(0.625, 0.984375, 0.7421875, 0.828125)
-addon.arrow:SetSize(23, 11)
-addon.arrow:SetPoint("CENTER", addon.icon, "TOP", 0, 0)
-addon.arrow:SetDrawLayer("ARTWORK")
---[[
-  Flyout frame for enchant buttons 
-]]
-addon.EnchantButtonFlyout = CreateFrame("Frame", nil, addon, "BackdropTemplate,ResizeLayoutFrame")
--- addon.EnchantButtonFlyout.minWidth = 40
--- addon.EnchantButtonFlyout.minHeight = 40
-addon.EnchantButtonFlyout:SetBackdrop({
+local LAYOUT_VERTICAL_PADDING = 4
+local LAYOUT_HORIZONTAL_PADDING = 4
+addon.FlyoutFrame = CreateFrame("Frame", nil, addon, "BackdropTemplate,ResizeLayoutFrame, SecureFrameTemplate")
+---@diagnostic disable-next-line: undefined-field
+addon.FlyoutFrame:SetBackdrop({
   bgFile = "Interface\\Tooltips\\UI-Tooltip-Background",
- 	edgeFile = "Interface\\Tooltips\\UI-Tooltip-Border",
+ 	edgeFile = "Interface\\ArenaEnemyFrame\\UI-Arena-Border",
  	tile = true,
  	tileEdge = true,
  	tileSize = 8,
- 	edgeSize = 8,
- 	insets = { left = 1, right = 1, top = 1, bottom = 1 },
+ 	edgeSize = 2,
+ 	-- insets = { left = 4, right = 4, top = 4, bottom = 4 },
 })
-addon.EnchantButtonFlyout:SetBackdropColor(0, 0, 0, 0.67)
-addon.EnchantButtonFlyout:SetBackdropBorderColor(0.8, 0.8, 0.8, 0.95)
-addon.EnchantButtonFlyout:SetPoint("BOTTOMLEFT", addon, "TOPLEFT", 0, BUTTON_Y_SPACING-1)
-local LAYOUT_VERTICAL_PADDING = 0
-local LAYOUT_HORIZONTAL_PADDING = 0
-addon.EnchantButtonFlyout:SetHeightPadding(LAYOUT_HORIZONTAL_PADDING)
-addon.EnchantButtonFlyout.widthPadding = LAYOUT_VERTICAL_PADDING
-addon.EnchantButtonFlyout:Hide()
+---@diagnostic disable-next-line: undefined-field
+addon.FlyoutFrame:SetBackdropColor(0, 0, 0, 0.75)
+---@diagnostic disable-next-line: undefined-field
+addon.FlyoutFrame:SetBackdropBorderColor(0.9, 0.9, 0.9, 0.95)
+---@diagnostic disable-next-line: undefined-field
+addon.FlyoutFrame:SetHeightPadding(LAYOUT_HORIZONTAL_PADDING)
+---@diagnostic disable-next-line: inject-field
+addon.FlyoutFrame.widthPadding = LAYOUT_VERTICAL_PADDING
 
-local CreateFlyoutButton = function(parent, name)
-  ---@class FlyoutButton : Button
+addon.FlyoutFrame:SetPoint("BOTTOMLEFT", addon.FlyoutButton, "TOPLEFT", 0, BUTTON_Y_SPACING-1)
+addon.FlyoutFrame:Hide()
+
+--- create a secure action button to use inside of the flyout.
+local CreateButtonForFlyout = function(parent, name)
+  ---@class ButtonInFlyout : Button
   button = CreateFrame("Button", name, parent,
     "SecureActionButtonTemplate, ItemButtonTemplate");
   button:SetPushedTexture([[Interface\Buttons\UI-Quickslot-Depress]])
   button:SetHighlightTexture([[Interface\Buttons\ButtonHilight-Square]], "ADD")
-
-  button:HookScript("OnLeave",function()
-    addon:Shared_OnLeave()
-  end)
+  button:HookScript("OnLeave", GameTooltip_Hide)
   local size = button:GetSize()
-  local scale = 30 / size -- scale to 30x30
+  local scale = (MAIN_BUTTON_SIZE * 0.9) / size -- scale to NxN via "N/size"
   button:SetScale(scale)
   local nativeHide = button.Hide
   button.hideAnim = button:CreateAnimationGroup()
@@ -185,29 +247,19 @@ local CreateFlyoutButton = function(parent, name)
   button.hideAnim:HookScript("OnFinished", function()
     if not InCombatLockdown() then
       nativeHide(button)
-    else
     end
   end)
-  -- function button:Hide()
-  --   if not InCombatLockdown() then
-  --     if self.hideAnim then
-  --       self.hideAnim:Play()
-  --     else
-  --       nativeHide(self)
-  --     end
-  --   end
-  -- end
 
   -- hack to get `SetItemButtonCount` to include count == 1
   button.isBag = true
   return button
 end
-local SetFlyoutButtonAttributes = function(self, attributes)
+local SetButtonAttributes = function(self, attributes)
   for attribute, value in pairs(attributes) do
     self:SetAttribute(attribute, value)
   end
 end
-local SetFlyoutButtonQuality = function(self, quality)
+local SetButtonQuality = function(self, quality)
   if quality then
 		if quality >= LE_ITEM_QUALITY_COMMON and BAG_ITEM_QUALITY_COLORS[quality] then
 			self.IconBorder:Show()
@@ -225,7 +277,7 @@ local SetFlyoutButtonQuality = function(self, quality)
 end
 --- note that OnShow is only called when the frame was previously hidden.
 --- meaning this wont be called to update the flyout if the flyout is already displayed.
-local UpdateEnchantButtonFlyout = function(self)
+local UpdateFlyoutFrame = function(self)
   local buttonInfo = addon:RefreshButtonInfo()
   local numButtons = #buttonInfo
   local numRows = math.ceil(numButtons / MAX_ROW_BUTTONS)
@@ -236,11 +288,11 @@ local UpdateEnchantButtonFlyout = function(self)
       local buttonIdx = (row - 1) * MAX_ROW_BUTTONS + col
       local button = _G[BASE_BUTTON_ID .. buttonIdx]
       if not button then
-        button = CreateFlyoutButton(self, (BASE_BUTTON_ID .. buttonIdx))
+        button = CreateButtonForFlyout(self, (BASE_BUTTON_ID .. buttonIdx))
       end
       -- print(buttonIdx)
       local info = buttonInfo[buttonIdx]
-      ---@cast button FlyoutButton
+      ---@cast button ButtonInFlyout
       -- position buttons
       if col == 1 then
         local flyoutEdgeSize = self:GetEdgeSize()
@@ -265,8 +317,7 @@ local UpdateEnchantButtonFlyout = function(self)
         button:SetPoint("LEFT", _G[(BASE_BUTTON_ID .. (buttonIdx - 1))], "RIGHT", BUTTON_X_SPACING, 0)
       end
       -- add tooltip
-      button:SetScript("OnEnter", function(button)
-        addon:Shared_OnEnter()
+      button:HookScript("OnEnter", function(button)
         GameTooltip:SetOwner(button, "ANCHOR_RIGHT")
         -- use ItemSpell if enchant comes from item, else use spellID
         local spell = info.itemID 
@@ -277,15 +328,15 @@ local UpdateEnchantButtonFlyout = function(self)
       end)
 
       -- set button attributes
-      SetFlyoutButtonAttributes(button, info.attributes)
+      SetButtonAttributes(button, info.attributes)
       -- button:Show() -- should be called by parent
 
       ---@diagnostic disable-next-line: undefined-global
       SetItemButtonTexture(button, info.icon)
-      ---@diagnostic disable-next-line: undefined-global
       if info.itemID then
+        ---@diagnostic disable-next-line: undefined-global
         SetItemButtonCount(button, GetItemCount(info.itemID, false, true))
-        SetFlyoutButtonQuality(button, select(3, GetItemInfo(info.itemID)))
+        SetButtonQuality(button, select(3, GetItemInfo(info.itemID)))
       end
     end
 
@@ -301,6 +352,7 @@ local UpdateEnchantButtonFlyout = function(self)
       ---@diagnostic disable-next-line: undefined-global
       SetItemButtonTexture(button, nil);
       -- button:ClearAllPoints()
+      button:Hide()
       -- button:Disable()
     end
   end
@@ -310,72 +362,23 @@ local UpdateEnchantButtonFlyout = function(self)
   -- the total extents of all child regions.
   self:MarkDirty();
 end
-addon.EnchantButtonFlyout:HookScript("OnShow", function(flyout)
-  UpdateEnchantButtonFlyout(flyout)
+addon.FlyoutFrame:HookScript("OnShow", function(flyout)
+  UpdateFlyoutFrame(flyout)
   -- if any button show update hover textures
   if _G[BASE_BUTTON_ID .. 1] 
   and _G[BASE_BUTTON_ID .. 1]:IsVisible() 
   then
-    addon.arrow:SetRotation(math.pi)
-    addon.highlight:Show()
+    SetFlyoutButtonHoverTextures(true)
   else
     flyout:hide()
   end
 end)
 
-
-local EnchantButtonFlyout_OnHide = function()
-  addon.arrow:SetRotation(0)
-  addon.highlight:Hide()
-end
-addon.EnchantButtonFlyout:SetScript("OnHide", EnchantButtonFlyout_OnHide)
-
-addon.EnchantButtonFlyout:HookScript("OnLeave", function()
-    addon:Shared_OnLeave()
-end)
-
-local function isMouseOverRecursive(parent)
-  local children = {parent:GetChildren()}
-  for i = 1, #children do
-    local child = children[i]
-    if child:IsMouseOver() or isMouseOverRecursive(child) then
-      return true
-    end
-  end
-  return parent:IsMouseOver()
-end
-function addon:IsMouseOverRecursive()
-  return isMouseOverRecursive(self)
-end
-
-local sharedHideTimer
-local TryHideFlyoutAfterDelay = function(delay)
-  if delay and delay > 0 then
-    if sharedHideTimer then
-      sharedHideTimer:Cancel()
-    end
-    -- print("Delay Hide Started")
-    sharedHideTimer = C_Timer.NewTimer(delay, 
-      function()
-        local isMouseOver = addon:IsMouseOverRecursive()
-        local InCombatLockdown = InCombatLockdown()
-        if not isMouseOver and not InCombatLockdown then
-          addon.EnchantButtonFlyout:Hide()
-        end
-      end
-    )
-  end
-end
-function addon:Shared_OnLeave()
-  TryHideFlyoutAfterDelay(0.15)
+local FlyoutFrame_OnHide = function()
+  SetFlyoutButtonHoverTextures(false)
   GameTooltip_Hide()
 end
-function addon:Shared_OnEnter()
-  if sharedHideTimer then
-    sharedHideTimer:Cancel()
-  end
-end
-
+addon.FlyoutFrame:HookScript("OnHide", FlyoutFrame_OnHide)
 
 --- refreshes `self.buttonInfo` with the current enchant items in bags
 function addon:RefreshButtonInfo()
@@ -464,61 +467,44 @@ function addon:RefreshButtonInfo()
   return buttonInfo
 end
 
-
-addon:SetFrameRef("Flyout", addon.EnchantButtonFlyout)
-addon:SetAttribute("_onenter", [=[
-  local flyout = self:GetFrameRef("Flyout");
+--[[
+  Setting up Secure Auto Hide for the flyout.
+  allows in combat support
+]]
+local flyout = "FlyoutFrame"
+local toggle = "FlyoutButton"
+---@diagnostic disable-next-line: undefined-field
+addon.FlyoutButton:SetFrameRef(flyout, addon.FlyoutFrame)
+---@diagnostic disable-next-line: undefined-field
+addon.FlyoutButton:SetFrameRef(toggle, addon.FlyoutButton)
+local ShowFlyoutAndSetAutoHide = ([=[
+  local flyout = self:GetFrameRef("%s");
+  local toggle = self:GetFrameRef("%s");
   flyout:Show();
-]=])
-addon:HookScript("OnEnter", function(self)
-  ---@cast self ClassicPoisonsAddon
-  self:Shared_OnEnter()
+  flyout:RegisterAutoHide(%.2f);
+  flyout:AddToAutoHide(toggle);
+]=]):format(flyout, toggle, hideDelay);
+addon.FlyoutButton:SetAttribute("_onenter", ShowFlyoutAndSetAutoHide);
+addon.FlyoutButton:SetAttribute("_onreceivedrag", ShowFlyoutAndSetAutoHide);
+addon.FlyoutButton:HookScript("OnEnter", function(self)
   -- self:RefreshButtonInfo()
-    GameTooltip:SetOwner(self, "ANCHOR_NONE")
-    GameTooltip:SetPoint("TOPLEFT", self, "TOPRIGHT", 3, 0)
-    GameTooltip:SetText("Left-click a poison to apply on main-hand.\nRight-click to apply on off-hand.")
-end)
-addon:SetAttribute("_onleave", [=[
-  local flyout = self:GetFrameRef("Flyout");
-  if not self:IsUnderMouse(true) and PlayerInCombat() then
-    flyout:Hide();
-  end
-]=])
-addon:HookScript("OnLeave", function(self)
-  if not InCombatLockdown() 
-  and addon.EnchantButtonFlyout:IsShown() 
-  then
-    self:Shared_OnLeave()
-  else
-    self.shouldHideAfterCombat = true
-  end
+  GameTooltip:SetOwner(self, "ANCHOR_NONE")
+  GameTooltip:SetPoint("TOPLEFT", self, "TOPRIGHT", 3, 0)
+  GameTooltip:SetText("Left-click an enchant to apply to main-hand.\nRight-click to apply to off-hand.")
+end);
 
+addon.FlyoutButton:HookScript("OnLeave", function(self)
+  GameTooltip_Hide()
 end)
 addon:HookScript("OnEvent", function(self, event)
   -- print(event)
   if event == "BAG_UPDATE_DELAYED" then
     if not InCombatLockdown() then
-      UpdateEnchantButtonFlyout(self.EnchantButtonFlyout)
+      UpdateFlyoutFrame(self.FlyoutFrame)
     end
   elseif event == "PLAYER_REGEN_DISABLED" then
-    -- 
-    addon.icon:SetDesaturated(true)
+    -- addon.icon:SetDesaturated(true)
   elseif event == "PLAYER_REGEN_ENABLED" then
-    if self.shouldHideAfterCombat then
-      self.shouldHideAfterCombat = false
-      -- self.EnchantButtonFlyout:Hide()
-    end
-    addon.icon:SetDesaturated(false)
+    -- addon.icon:SetDesaturated(false)
   end
-end)
-
---- Make draggable ---
-addon:SetMovable(true)
-addon:EnableMouse(true)
-addon:RegisterForDrag("LeftButton")
-addon:SetScript("OnDragStart", function(self)
-  self:StartMoving()
-end)
-addon:SetScript("OnDragStop", function(self)
-  self:StopMovingOrSizing()
 end)
