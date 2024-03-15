@@ -1,6 +1,5 @@
 -- PLAYER_TARGET_CHANGED, UNIT_STATS:player, PLAYER_EQUIPMENT_CHANGED, COMBAT_RATING_UPDATE, PLAYER_DAMAGE_DONE_MODS
 aura_env.playerClass = select(2, UnitClass("player"))
-
 aura_env.resetTable = function()
     aura_env.possibleResults = {
         "Miss", "Dodge", "Parry", "Block",
@@ -216,40 +215,93 @@ aura_env.getWeaponSkills = function()
     return mhSkill, ohSkill
 end
 ------------------------------------------------------------------------
+local agiPerCritAt60 = {
+    ["HUNTER"] = 53,
+    ["ROGUE"] = 29,
+    ["WARRIOR"] = 20,
+    ["SHAMAN"] = 20,
+    ["DRUID"] = 20,
+    ["PALADIN"] = 20,
+}
+-- level modifier for the agiPerCrit table
+-- Based on in-game comparing for rogue at lvl 25/40 vs 60
+-- 0.0950 @ 25. approximately
+-- 0.0550 @ 40
+-- 0.0345 @ 60 (1/29)
+local f = { 
+    {x = 25, y = 0.0950},
+    {x = 40, y = 0.0550},
+    {x = 60, y = 0.0345},
+}
+-- Lagrange coefficients
+local L = function(k, x)
+    local m = #f
+    local prod = 1
+    for n = 1 , m do
+        if n ~= k then
+            prod = prod * (x - f[n].x) / (f[k].x - f[n].x)
+        end
+    end
+    return prod
+end
+-- Interpolating polynomial
+local P = function(x)
+    local m = #f
+    local sum = 0
+    for n = 1 , m do
+        sum = sum + f[n].y * L(n, x)
+    end
+    return sum
+end
+aura_env.getAgiPerCritTable = function()
+    local playerLevel = UnitLevel("player")
+    local agiPerCrit = agiPerCritAt60
+    if playerLevel ~= 60 then
+        -- verify interpolation
+        assert(P(f[1].x) == f[1].y);
+        assert(P(f[2].x) == f[2].y);
+        assert(P(f[3].x) == f[3].y);
+
+        -- mod between max and current level scaling for rogue
+        local currentCritPerAgi = P(playerLevel)
+        local maxCritPerAgi = P(60)
+        local levelMod = maxCritPerAgi / currentCritPerAgi
+
+        -- apply ratio from rogue to all other classes
+        for class, maxAgiPerCrit in pairs(agiPerCritAt60) do
+            agiPerCrit[class] = maxAgiPerCrit * levelMod
+        end
+    end
+    return agiPerCrit
+end
 ---Returns the crit chance gained from agility for the player's class.
 ---Level 60 values from https://vanilla-wow-archive.fandom.com/wiki/Attributes
 ---@return number
 aura_env.getCritChanceFromAgility = function()
     local class = select(2, UnitClass("player"))
     local agility = UnitStat("player", 2)
-    local level = UnitLevel("player")
-    local agiPerCrit = {
-        ["HUNTER"] = 53,
-        ["ROGUE"] = 29,
-        ["WARRIOR"] = 20,
-        ["SHAMAN"] = 20,
-        ["DRUID"] = 20,
-        ["PALADIN"] = 20,
-    }
-    if not agiPerCrit[class] then
+
+    if not agiPerCritAt60[class] then
         return 0
     end
-    if level == 25 then
-        -- Unconfirmed. For SoD.
-        -- Based on in-game comparing for rogue at lvl 25/40 vs 60
-        -- 0.095 @ 25. approximately
-        -- 0.055 @ 40
-        local currentCritPerAgi = 0.055
-        local maxCritPerAgi = 1 / agiPerCrit["ROGUE"] -- @ 60; 0.034%
-        local levelMod = maxCritPerAgi / currentCritPerAgi
-        for class, scale in pairs(agiPerCrit) do
-            agiPerCrit[class] = scale * levelMod
-        end
-    end
-    return agility / agiPerCrit[class]
+
+    return agility / agiPerCritAt60[class]
 end
 
 ---Builds the display text table for the weakaura.
+local newTextTable = function()
+  local textTable = {
+    numLines = 0,
+    AddLine = function(self, text)
+      self.numLines = self.numLines + 1
+      self[self.numLines] = text
+      return self
+    end,
+    GetText = function(self)
+      return table.concat(self, "\n")
+    end
+  }
+end
 aura_env.customText = function()
     if aura_env.state and aura_env.state.show
         and aura_env.tableInfo
