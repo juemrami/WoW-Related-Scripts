@@ -4,4 +4,4 @@
 ## Version: 1.0.0
 #myLocaldb.lua
 #myLocaldb.xml
-classicPoisonsAddon.lua
+#classicPoisonsAddon.lua
