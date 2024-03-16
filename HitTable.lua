@@ -290,7 +290,7 @@ end
 
 ---Builds the display text table for the weakaura.
 local newTextTable = function()
-  local textTable = {
+  return {
     numLines = 0,
     AddLine = function(self, text)
       self.numLines = self.numLines + 1
@@ -307,16 +307,23 @@ aura_env.customText = function()
         and aura_env.tableInfo
     then
         local tableStr
+        local textTable = newTextTable()
+        --- Player's weapon skill
         -- Weapon skill: %n | %n if exists
         local mhSkill, ohSkill = aura_env.getWeaponSkills()
         if mhSkill then
-            tableStr = ("Weapon Skill(s): %i %s"):format(
-                mhSkill, 
-                ((ohSkill and ohSkill ~= mhSkill) 
-                    and (("| %i\n"):format(ohSkill)) 
-                    or "\n"))    
+          local line = ("Weapon Skill(s): %i"):format(mhSkill)
+          if ohSkill and ohSkill ~= mhSkill then
+            line = line .. (" | %i"):format(ohSkill)
+          end
+          textTable:AddLine(line)
         end
-        -- Header and Row Names
+        -- Header
+        -- calculation types and target info
+        local tableType = aura_env.config.useYellowAttackTable
+          and "Special Attacks"
+          or "White Attacks";
+
         local simulateLevel = (
             aura_env.config.capTargetLevel
             and UnitExists("target")
@@ -324,55 +331,55 @@ aura_env.customText = function()
         ) or (
             aura_env.config.forceShow
             and not UnitExists("target")
-        )
-        -- print("simulateLevel?", simulateLevel)
-        tableStr = tableStr .. (aura_env.config.useYellowAttackTable
-            and "Special Attack Table on "
-            .. (simulateLevel
-                and "+" .. aura_env.config.maxLevelGap .. " "
-                or "") .. "Target:"
-            or "Attack Table on "
-            .. (simulateLevel
-                and "+" .. aura_env.config.maxLevelGap .. " "
-                or "") .. "Target:")
+        );
+        local targetLevel = simulateLevel
+          and (UnitLevel("player") + aura_env.config.maxLevelGap)
+          or UnitLevel("target");
+        local targetType = "NPC" -- deal with players later, requires different calculations
 
+        local positionalInfo = "(Facing player)";
         if aura_env.playerClass == "HUNTER" then
-            tableStr = tableStr .. " (Ranged)"
+            positionalInfo = "(Ranged)";
             aura_env.possibleResults = {
                 "Miss", "Block", "Crit", "Ordinary Hit"
             }
         elseif not aura_env.config.isTargetFacingPlayer then
-            tableStr = tableStr .. " (Behind)"
+            positionalInfo = "(Behind target)"
             aura_env.possibleResults = {
                 "Miss", "Dodge", "Glancing", "Crit", "Ordinary Hit"
             }
         end
-        -- Row data
+
+        textTable:AddLine(("%s on Lvl %i %s: %s")
+          :format(tableType, targetLevel, targetType, positionalInfo));
+        
+        -- Actual attack table results
         for _, hitType in pairs(aura_env.possibleResults) do
             local chance = aura_env.tableInfo[hitType]
-            local line = ("\n%s: %.01f%%"):format(hitType, chance)
+            local line = ("%s: %.01f%%"):format(hitType, chance)
             if hitType == "Miss"
                 and aura_env.config.useYellowAttackTable
             then
-                chance = YELLOW_FONT_COLOR:WrapTextInColorCode(
-                    ("%.01f%%"):format(chance)
-                )
-                line = ("\n%s: %s"):format(hitType, chance)
+                chance = YELLOW_FONT_COLOR
+                  :WrapTextInColorCode(("%.01f%%"):format(chance));
+                line = ("%s: %s"):format(hitType, chance)
             end
             if hitType == "Glancing" then
+                -- insert glance% early to add the dr% after
+                textTable:AddLine(line)
                 local key = "Glance DR"
-                line = line .. (("\n%s: %0.1f%%"):format(
-                    key,
-                    aura_env.tableInfo[key]))
+                line = ("%s: %0.1f%%")
+                  :format(key, aura_env.tableInfo[key]);
             end
-            tableStr = tableStr .. line
+            textTable:AddLine(line)
         end
+
         -- add crit cap at bottom of table
         local key = "Crit Cap"
-        tableStr = tableStr .. (("\n%s: %0.1f%%"):format(
-            key,
-            aura_env.tableInfo[key]))
-        return tableStr
+        textTable:AddLine(("%s: %0.1f%%")
+          :format(key, aura_env.tableInfo[key]));
+
+        return textTable:GetText();
     end
 end
 
