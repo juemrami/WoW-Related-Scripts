@@ -16,6 +16,7 @@ aura_env.resetTable = function()
         ["Ordinary Hit"] = 0,
         ["Crit Cap"] = 0,
     }
+    aura_env.offHandTableInfo = CopyTable(aura_env.tableInfo)
 end
 aura_env.showFunc = {
     -- "Enemy Target",
@@ -45,7 +46,6 @@ aura_env.onEvent = function(states, event, ...)
             -- if event == "STATUS" then print("status event show") end
             local useFakeTarget = aura_env.config.showOn == 3 -- always show
                 and not UnitExists("target")
-            -- print("useFakeTarget?", useFakeTarget)
             local targetLevel = useFakeTarget and -1 or UnitLevel("target")
             -- print("targetLevel", targetLevel)
             -- print("lastTargetLevel", aura_env.lastTargetLevel)
@@ -57,6 +57,9 @@ aura_env.onEvent = function(states, event, ...)
                 -- if event == "STATUS" then print("status event make table") end
                 aura_env.resetTable()
                 aura_env.makeTable(useFakeTarget)
+                if aura_env.shouldUseOffhand() then
+                    aura_env.makeTable(useFakeTarget, true)
+                end
                 aura_env.lastTargetLevel = targetLevel
                 states[""] = { show = true, changed = true }
                 return true
@@ -74,7 +77,7 @@ end
 
 ---Generate the attack table for the player's current target.
 ---@param useRaidTarget boolean? Force the table to be generated with a +3 level target.
-aura_env.makeTable = function(useRaidTarget)
+aura_env.makeTable = function(useRaidTarget, calcOffHand)
     -- "Constants"
     local playerLevel = UnitLevel("player")
     local targetLevel = useRaidTarget and -1 or UnitLevel("target")
@@ -88,6 +91,11 @@ aura_env.makeTable = function(useRaidTarget)
     -- TODO: offhand stuff for different weapon types
     local mainWeaponSkill, offWeaponSkill = aura_env.getWeaponSkills()
     if not mainWeaponSkill then return end
+    local hitTable = aura_env.tableInfo
+    if calcOffHand and offWeaponSkill then
+        hitTable = aura_env.offHandTableInfo
+        mainWeaponSkill = offWeaponSkill
+    end
     local targetDefenseSkill = targetLevel * 5                      -- 315 for level 63 mobs
     local defenseAttackSkillDiff = targetDefenseSkill - mainWeaponSkill
     local cappedWeaponSkill = min(mainWeaponSkill, playerLevel * 5) -- 300 @ 60
@@ -109,13 +117,13 @@ aura_env.makeTable = function(useRaidTarget)
     -- code in 1.12 explicitly adds a modifier that causes the first 1% of +hit gained from talents or gear to be ignored against monsters with more than 10 Defense Skill above the attacking player’s Weapon Skill.
     local hitPenalty = defenseAttackSkillDiff > 10 and 1 or 0
     local missChance = max(baseMissChance - (hitRating - hitPenalty), 0)
-    aura_env.tableInfo["Miss"] = missChance
+    hitTable["Miss"] = missChance
 
     -- A ranged attack cannot result in a dodge, parry, or glancing blow
     if aura_env.playerClass ~= "HUNTER" then
         -- Dodge chance
         local dodgeChance = max(5 + defenseAttackSkillDiff * 0.1, 0) or 0
-        aura_env.tableInfo["Dodge"] = dodgeChance
+        hitTable["Dodge"] = dodgeChance
 
         -- Parry
         -- Seems to be 14% vs +3 lvl targets, unaffected by weapon skill
@@ -126,7 +134,7 @@ aura_env.makeTable = function(useRaidTarget)
                 or max(5 + defenseAttackSkillDiff * 0.1, 0)
             )
             or 0
-        aura_env.tableInfo["Parry"] = parryChance
+        hitTable["Parry"] = parryChance
 
         -- Glancing blows
         -- extra weapon skill does not affect the chance of glancing blows
@@ -138,15 +146,15 @@ aura_env.makeTable = function(useRaidTarget)
         local lowEnd = max(min(1.3 - (defenseAttackSkillDiff * 0.05), 0.91), 0.01)
         local highEnd = max(min(1.2 - (defenseAttackSkillDiff * 0.03), 0.99), 0.2)
         local glanceDR = (1 - ((lowEnd + highEnd) / 2)) * 100
-        aura_env.tableInfo["Glancing"] = glancingChance
-        aura_env.tableInfo["Glance DR"] = glanceDR
+        hitTable["Glancing"] = glancingChance
+        hitTable["Glance DR"] = glanceDR
     end
     -- Block
     -- Mobs never have higher than 5% block chance.
     local blockChance = aura_env.config.isTargetFacingPlayer
         and min(5, max(5 + defenseAttackSkillDiff * 0.1, 0))
         or 0
-    aura_env.tableInfo["Block"] = blockChance
+    hitTable["Block"] = blockChance
     -- Order is Parry -> Glancing -> Block
     -- If the total combined chance of a miss, dodge, parry, or block is 100% or higher, not only can the attack not be an ordinary hit, the attack also cannot be a crit or a crushing blow.
 
@@ -162,38 +170,43 @@ aura_env.makeTable = function(useRaidTarget)
     local auraCritPenalty = (targetLevel - playerLevel > 3 and auraCrit > 0)
         and 1.8 or 0
     critChance = max(critChance - auraCritPenalty, 0)
-    aura_env.tableInfo["Crit"] = critChance
+    hitTable["Crit"] = critChance
 
     -- Generate the Table
     local remainingChance = 100
+    local tableOverflow = false
     for _, attackResult
     -- Entry order: Miss, dodge, parry, glancing blows, blocks, crit, normal hit
     in ipairs(aura_env.possibleResults)
     do
-        if aura_env.tableInfo[attackResult] then
-            if remainingChance == 0 then
-                aura_env.tableInfo[attackResult] = 0
+        if hitTable[attackResult] then
+          if calcOffHand then 
+            print(("checking %s | %.02f%% remaining | %.02f%% required"):format(attackResult, remainingChance, hitTable[attackResult]))
+          end
+            if remainingChance == 0 or tableOverflow then
+                hitTable[attackResult] = 0
             end
-            remainingChance = remainingChance - aura_env.tableInfo[attackResult]
+            remainingChance = remainingChance - hitTable[attackResult]
             if remainingChance < 0 then
+              print("remainingChance < 0", attackResult, remainingChance, hitTable[attackResult])
                 -- when the table is overflown
                 -- correct the entry to not include overflown amount
-                aura_env.tableInfo[attackResult] =
-                    aura_env.tableInfo[attackResult] + remainingChance
-                remainingChance = 0
+                hitTable[attackResult] = 
+                  hitTable[attackResult] + remainingChance;
+                tableOverflow = true
             end
         end
     end
     -- actual hit chance is whatever is left from the 100% after all other entries
-    aura_env.tableInfo["Ordinary Hit"] = remainingChance
+    hitTable["Ordinary Hit"] = remainingChance
     
     -- "Crit Cap" is the same as effective crit.
     -- It is the amount of space for Crit on the table after Block.
     -- If the space for calculated Crit is insufficient then,
     -- it is capped at whatever space is left to fill the table.
     -- If there is no space for crit, your crit is capped at 0%, ineffective.
-    aura_env.tableInfo["Crit Cap"] =
-        remainingChance + aura_env.tableInfo["Crit"]
+    hitTable["Crit Cap"] =
+        remainingChance + hitTable["Crit"]
 end
 ------------------------------------------------------------------------
 ---Returns the total weapon skill of the main hand, and off hand weapon if used.
@@ -213,6 +226,10 @@ aura_env.getWeaponSkills = function()
     -- local _, mhWeaponID = select(6, GetItemInfoInstant(mhItemId or ""))
     local ohSkill = IsDualWielding() and (ohBase + ohExtra) or nil
     return mhSkill, ohSkill
+end
+aura_env.shouldUseOffhand = function()
+  local mhSkill, ohSkill = aura_env.getWeaponSkills()
+  return IsDualWielding() and ohSkill and ohSkill ~= mhSkill
 end
 ------------------------------------------------------------------------
 local agiPerCritAt60 = {
@@ -290,33 +307,108 @@ end
 
 ---Builds the display text table for the weakaura.
 local newTextTable = function()
-  return {
+  ---@class TextTable: string[][]
+  local t = {
     numLines = 0,
-    AddLine = function(self, text)
-      self.numLines = self.numLines + 1
-      self[self.numLines] = text
-      return self
-    end,
-    GetText = function(self)
-      return table.concat(self, "\n")
-    end
+    colSeparator = " | ",
+    ignoredLines = {},
+    lineCells = {},
   }
+  function t:AddLine(text, ignoreAlign)
+      self.numLines = self.numLines + 1
+      self[self.numLines] = {}
+      self[self.numLines][1] = text
+      self.ignoredLines[self.numLines] = ignoreAlign and true or false
+      return self.numLines
+    end
+  ---@param line integer
+  ---@param text string
+  function t:AddCell(line, text)
+    assert(line <= self.numLines and self[line], "Line does not exist")
+    assert(type(self[line]) == "table", "Line is not a table")
+    tinsert(self[line], text)
+    return self
+  end
+  function t:AddSeparator()
+    self:AddLine("===", true)
+    return self
+  end
+  ---@param justify ("left"|"right")?
+  function t:PadCells(justify)
+    ---@cast self TextTable
+    if not justify then justify = "left" end
+    -- find the max num of columns for all lines
+    -- find the max width of each column
+    -- add padding to each column to match the max width
+    -- add padding to each line to match the max num of columns
+    local maxCols = 0
+    local colMaxWidths = {}
+    local maxRowLength = 0
+    for line = 1, self.numLines do
+      if not self.ignoredLines[line] then
+        maxCols = max(maxCols, #self[line])
+        local rowLength = 0
+        for col = 1, #self[line] do
+          local colWidth = #self[line][col]
+          colMaxWidths[col] = max(colMaxWidths[col] or 0, colWidth)
+          rowLength = rowLength + colWidth
+        end
+        print(("line %i length: %i"):format(line, rowLength))
+        maxRowLength = max(maxRowLength, rowLength)
+      end
+    end
+    print("maxRowLength", maxRowLength)
+    for i = 1, self.numLines do
+      if not self.ignoredLines[i] then
+        for j = 1, maxCols do
+          local cell = self[i][j] or ""
+          local pad = colMaxWidths[j] - #cell
+          if justify == "left" then
+            self[i][j] = cell .. (" "):rep(pad)
+          else
+            self[i][j] = (" "):rep(pad) .. cell
+          end
+        end
+      elseif self[i][1] == "===" then
+        self[i][1] = ("-"):rep(maxRowLength)
+      end
+    end
+    return self
+  end
+  function t:BuildTable()
+    local lines = {}
+    for i = 1, self.numLines do  
+      -- each column is separated by a `self.colSeparator`
+      tinsert(lines, table.concat(self[i], self.colSeparator))
+    end
+    -- each line is separated by a newline
+    return table.concat(lines, "\n")
+  end
+  return t
 end
 aura_env.customText = function()
     if aura_env.state and aura_env.state.show
         and aura_env.tableInfo
     then
-        local tableStr
         local textTable = newTextTable()
         --- Player's weapon skill
         -- Weapon skill: %n | %n if exists
-        local mhSkill, ohSkill = aura_env.getWeaponSkills()
+       local mhSkill, ohSkill = aura_env.getWeaponSkills()
         if mhSkill then
           local line = ("Weapon Skill(s): %i"):format(mhSkill)
-          if ohSkill and ohSkill ~= mhSkill then
-            line = line .. (" | %i"):format(ohSkill)
+          if aura_env.shouldUseOffhand() then
+            line = line .. (" | %s"):format(NIGHT_FAE_BLUE_COLOR
+            :WrapTextInColorCode(ohSkill))
           end
-          textTable:AddLine(line)
+          textTable:AddLine(line, true)
+          -- local lineIdx = textTable:AddLine("Weapon Skill(s)")
+          -- textTable:AddCell(lineIdx, tostring(mhSkill))
+          -- if aura_env.shouldUseOffhand() then
+          --   textTable:AddCell(
+          --     lineIdx, 
+          --     NIGHT_FAE_BLUE_COLOR:WrapTextInColorCode(ohSkill)
+          --   );
+          -- end
         end
         -- Header
         -- calculation types and target info
@@ -337,49 +429,64 @@ aura_env.customText = function()
           or UnitLevel("target");
         local targetType = "NPC" -- deal with players later, requires different calculations
 
-        local positionalInfo = "(Facing player)";
+
+        local positionalInfo = "Target facing player";
         if aura_env.playerClass == "HUNTER" then
-            positionalInfo = "(Ranged)";
+            positionalInfo = "Ranged";
             aura_env.possibleResults = {
                 "Miss", "Block", "Crit", "Ordinary Hit"
             }
         elseif not aura_env.config.isTargetFacingPlayer then
-            positionalInfo = "(Behind target)"
+            positionalInfo = "Player behind target"
             aura_env.possibleResults = {
                 "Miss", "Dodge", "Glancing", "Crit", "Ordinary Hit"
             }
         end
 
-        textTable:AddLine(("%s on Lvl %i %s: %s")
-          :format(tableType, targetLevel, targetType, positionalInfo));
+        -- Insert "Glancing DR" after "Glancing" entry
+        for i, v in ipairs(aura_env.possibleResults) do
+            if v == "Glancing" then
+                tinsert(aura_env.possibleResults, i + 1, "Glance DR")
+                break
+            end
+        end
+        -- Insert "Crit Cap" at the end of the table
+        tinsert(aura_env.possibleResults, "Crit Cap")
+
+        textTable:AddLine("Position: " .. positionalInfo, true);
+        textTable:AddLine(("%s on Lvl %i %s:")
+          :format(tableType, targetLevel, targetType), true);
+        textTable:AddSeparator();
         
         -- Actual attack table results
         for _, hitType in pairs(aura_env.possibleResults) do
             local chance = aura_env.tableInfo[hitType]
-            local line = ("%s: %.01f%%"):format(hitType, chance)
+            local ohChance = aura_env.offHandTableInfo[hitType]
+            -- local line = ("%s: %.01f%%"):format(hitType, chance) 
+            local lineIdx = textTable:AddLine(hitType)
             if hitType == "Miss"
-                and aura_env.config.useYellowAttackTable
+            and aura_env.config.useYellowAttackTable
             then
-                chance = YELLOW_FONT_COLOR
-                  :WrapTextInColorCode(("%.01f%%"):format(chance));
-                line = ("%s: %s"):format(hitType, chance)
+              chance = YELLOW_FONT_COLOR
+              :WrapTextInColorCode(("%.01f%%"):format(chance));
             end
-            if hitType == "Glancing" then
-                -- insert glance% early to add the dr% after
-                textTable:AddLine(line)
-                local key = "Glance DR"
-                line = ("%s: %0.1f%%")
-                  :format(key, aura_env.tableInfo[key]);
+            textTable:AddCell(
+              lineIdx, (
+                type(chance) == "number" 
+                and "%.01f%%" 
+                or "%s"):format(chance));
+            
+            if aura_env.shouldUseOffhand() then
+              ohChance = NIGHT_FAE_BLUE_COLOR
+                :WrapTextInColorCode(("%.01f%%")
+                :format(aura_env.offHandTableInfo[hitType]));
+              -- line = ("%s | %s"):format(line, ohChance);
+              textTable:AddCell(lineIdx, ohChance);
             end
-            textTable:AddLine(line)
+
+            -- textTable:AddLine(line)
         end
-
-        -- add crit cap at bottom of table
-        local key = "Crit Cap"
-        textTable:AddLine(("%s: %0.1f%%")
-          :format(key, aura_env.tableInfo[key]));
-
-        return textTable:GetText();
+        return textTable:PadCells():BuildTable()
     end
 end
 
