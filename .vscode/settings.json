@@ -364,7 +364,8 @@
         "CursorUpdate",
         "BattlePetToolTip_Show",
         "BAG_FILTER_ASSIGNED_TO",
-        "BAG_FILTER_LABELS"
+        "BAG_FILTER_LABELS",
+        "NIGHT_FAE_BLUE_COLOR"
     ],
     "cSpell.enabled": true,
     "cSpell.enableFiletypes": [
