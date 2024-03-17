@@ -47,14 +47,10 @@ aura_env.onEvent = function(states, event, ...)
             local useFakeTarget = aura_env.config.showOn == 3 -- always show
                 and not UnitExists("target")
             local targetLevel = useFakeTarget and -1 or UnitLevel("target")
-            -- print("targetLevel", targetLevel)
-            -- print("lastTargetLevel", aura_env.lastTargetLevel)
             if event == "PLAYER_TARGET_CHANGED" and (not aura_env.lastTargetLevel
                 or aura_env.lastTargetLevel ~= targetLevel)
                 or true
             then
-                -- print("level update. remaking table")
-                -- if event == "STATUS" then print("status event make table") end
                 aura_env.resetTable()
                 aura_env.makeTable(useFakeTarget)
                 if aura_env.shouldUseOffhand() then
@@ -174,33 +170,29 @@ aura_env.makeTable = function(useRaidTarget, calcOffHand)
 
     -- Generate the Table
     local remainingChance = 100
-    local tableOverflow = false
-    for _, attackResult
+    local tableOverflown = false
+    for _, hitType
     -- Entry order: Miss, dodge, parry, glancing blows, blocks, crit, normal hit
-    in ipairs(aura_env.possibleResults)
-    do
-        if hitTable[attackResult] then
-          if calcOffHand then 
-            print(("checking %s | %.02f%% remaining | %.02f%% required"):format(attackResult, remainingChance, hitTable[attackResult]))
+    in ipairs(aura_env.possibleResults) do
+      if hitTable[hitType] then
+        if not tableOverflown then
+          local budget = remainingChance
+          local required = hitTable[hitType]
+          local effective = min(budget, required)
+          hitTable[hitType] = effective
+          remainingChance = remainingChance - effective
+          if remainingChance < 0 then
+            tableOverflown = true;
           end
-            if remainingChance == 0 or tableOverflow then
-                hitTable[attackResult] = 0
-            end
-            remainingChance = remainingChance - hitTable[attackResult]
-            if remainingChance < 0 then
-              print("remainingChance < 0", attackResult, remainingChance, hitTable[attackResult])
-                -- when the table is overflown
-                -- correct the entry to not include overflown amount
-                hitTable[attackResult] = 
-                  hitTable[attackResult] + remainingChance;
-                tableOverflow = true
-            end
+        else
+          hitTable[hitType] = 0
         end
+      end
     end
     -- actual hit chance is whatever is left from the 100% after all other entries
     hitTable["Ordinary Hit"] = remainingChance
     
-    -- "Crit Cap" is the same as effective crit.
+    -- "Crit Cap" is the same as max effective crit.
     -- It is the amount of space for Crit on the table after Block.
     -- If the space for calculated Crit is insufficient then,
     -- it is capped at whatever space is left to fill the table.
@@ -305,6 +297,14 @@ aura_env.getCritChanceFromAgility = function()
     return agility / agiPerCritAt60[class]
 end
 
+---@param text string
+local actualTextLength = function(text)
+  local length = #text
+  for _ in text:gmatch("|c%w%w%w%w%w%w%w%w") do
+    length = length - 12
+  end
+  return length
+end
 ---Builds the display text table for the weakaura.
 local newTextTable = function()
   ---@class TextTable: string[][]
@@ -351,7 +351,9 @@ local newTextTable = function()
       if not self.ignoredLines[line] then
       maxCols = max(maxCols, #self[line])
         for col = 1, #self[line] do
-          local colWidth = #self[line][col]
+          local colText = self[line][col] --[[@as string]]
+          local colWidth = actualTextLength(colText)
+          -- bug, check col for escape sequences
           colMaxWidths[col] = max(
             colMaxWidths[col] or 0, 
             colWidth
@@ -363,10 +365,11 @@ local newTextTable = function()
       if not self.ignoredLines[i] then
         for j = 1, maxCols do
           local cell = self[i][j] or ""
-          local pad = colMaxWidths[j] - #cell
-          if justify == "left" then
-            self[i][j] = cell .. (" "):rep(pad)
-          else
+          local pad = colMaxWidths[j] - actualTextLength(cell)
+          self[i][j] = cell .. (" "):rep(pad)
+          if justify == "right"
+          and j ~= 1 -- hack to force left align the label column
+          then
             self[i][j] = (" "):rep(pad) .. cell
           end
         end
@@ -381,13 +384,8 @@ local newTextTable = function()
       -- each column is separated by a `self.colSeparator
       local lineText = table.concat(self[i], self.colSeparator)
       tinsert(lines, lineText)
-      local length = #lineText
-      if lineText:match("|c%w%w%w%w%w%w%w%w.*|r") then
-        length = length - 10
-      end
+      local length = actualTextLength(lineText)
       maxLineLength = max(maxLineLength, length)
-      print(("line %i | length: %i | isIgnored: %s")
-        :format(i, length,  tostring(self.ignoredLines[i])));
     end
     -- adjust separtor lengths
     for i, isSeparator in ipairs(self.isLineSeparator) do
@@ -399,6 +397,13 @@ local newTextTable = function()
     return table.concat(lines, "\n")
   end
   return t
+end
+local fmtFloat = function(pct, color)
+  if color and color.WrapTextInColorCode then
+    return color:WrapTextInColorCode(("%.01f%%"):format(pct))
+  else
+    return ("%.01f%%"):format(pct)
+  end
 end
 aura_env.customText = function()
     if aura_env.state and aura_env.state.show
@@ -427,7 +432,7 @@ aura_env.customText = function()
         -- Header
         -- calculation types and target info
         local tableType = aura_env.config.useYellowAttackTable
-          and "Special Attacks"
+          and YELLOW_FONT_COLOR:WrapTextInColorCode("Special Attacks")
           or "White Attacks";
 
         local simulateLevel = (
@@ -477,33 +482,25 @@ aura_env.customText = function()
         for _, hitType in pairs(aura_env.possibleResults) do
             local chance = aura_env.tableInfo[hitType]
             local ohChance = aura_env.offHandTableInfo[hitType]
-            -- local line = ("%s: %.01f%%"):format(hitType, chance) 
             local lineIdx = textTable:AddLine(hitType)
-            if hitType == "Miss"
-            and aura_env.config.useYellowAttackTable
-            then
-              chance = YELLOW_FONT_COLOR
-              :WrapTextInColorCode(("%.01f%%"):format(chance));
-            end
+       
+            local isSpecialMiss = (hitType == "Miss") 
+              and aura_env.config.useYellowAttackTable;
+            
             textTable:AddCell(
-              lineIdx, (
-                type(chance) == "number" 
-                and "%.01f%%" 
-                or "%s"):format(chance));
+              lineIdx, fmtFloat(chance, isSpecialMiss and YELLOW_FONT_COLOR)
+            );
             
             if aura_env.shouldUseOffhand() 
             and aura_env.config.showOffhand
             then
-              ohChance = NIGHT_FAE_BLUE_COLOR
-                :WrapTextInColorCode(("%.01f%%")
-                :format(aura_env.offHandTableInfo[hitType]));
-              -- line = ("%s | %s"):format(line, ohChance);
-              textTable:AddCell(lineIdx, ohChance);
+              textTable:AddCell(
+                lineIdx, fmtFloat(ohChance, NIGHT_FAE_BLUE_COLOR)
+              );
             end
-
-            -- textTable:AddLine(line)
-        end
-        return textTable:PadCells():BuildTable()
+          end
+          textTable:AddSeparator();
+        return textTable:PadCells("right"):BuildTable()
     end
 end
 
