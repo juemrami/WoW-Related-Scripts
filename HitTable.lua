@@ -313,12 +313,14 @@ local newTextTable = function()
     colSeparator = " | ",
     ignoredLines = {},
     lineCells = {},
+    isLineSeparator = {},
   }
   function t:AddLine(text, ignoreAlign)
       self.numLines = self.numLines + 1
       self[self.numLines] = {}
       self[self.numLines][1] = text
       self.ignoredLines[self.numLines] = ignoreAlign and true or false
+      self.isLineSeparator[self.numLines] = false
       return self.numLines
     end
   ---@param line integer
@@ -330,7 +332,9 @@ local newTextTable = function()
     return self
   end
   function t:AddSeparator()
-    self:AddLine("===", true)
+    local idx = self:AddLine("===")
+    self.ignoredLines[idx] = true
+    self.isLineSeparator[idx] = true
     return self
   end
   ---@param justify ("left"|"right")?
@@ -343,21 +347,18 @@ local newTextTable = function()
     -- add padding to each line to match the max num of columns
     local maxCols = 0
     local colMaxWidths = {}
-    local maxRowLength = 0
     for line = 1, self.numLines do
       if not self.ignoredLines[line] then
-        maxCols = max(maxCols, #self[line])
-        local rowLength = 0
+      maxCols = max(maxCols, #self[line])
         for col = 1, #self[line] do
           local colWidth = #self[line][col]
-          colMaxWidths[col] = max(colMaxWidths[col] or 0, colWidth)
-          rowLength = rowLength + colWidth
+          colMaxWidths[col] = max(
+            colMaxWidths[col] or 0, 
+            colWidth
+          )
         end
-        print(("line %i length: %i"):format(line, rowLength))
-        maxRowLength = max(maxRowLength, rowLength)
       end
     end
-    print("maxRowLength", maxRowLength)
     for i = 1, self.numLines do
       if not self.ignoredLines[i] then
         for j = 1, maxCols do
@@ -369,17 +370,30 @@ local newTextTable = function()
             self[i][j] = (" "):rep(pad) .. cell
           end
         end
-      elseif self[i][1] == "===" then
-        self[i][1] = ("-"):rep(maxRowLength)
       end
     end
     return self
   end
   function t:BuildTable()
     local lines = {}
+    local maxLineLength = 0
     for i = 1, self.numLines do  
-      -- each column is separated by a `self.colSeparator`
-      tinsert(lines, table.concat(self[i], self.colSeparator))
+      -- each column is separated by a `self.colSeparator
+      local lineText = table.concat(self[i], self.colSeparator)
+      tinsert(lines, lineText)
+      local length = #lineText
+      if lineText:match("|c%w%w%w%w%w%w%w%w.*|r") then
+        length = length - 10
+      end
+      maxLineLength = max(maxLineLength, length)
+      print(("line %i | length: %i | isIgnored: %s")
+        :format(i, length,  tostring(self.ignoredLines[i])));
+    end
+    -- adjust separtor lengths
+    for i, isSeparator in ipairs(self.isLineSeparator) do
+      if isSeparator then
+        lines[i] = ("-"):rep(maxLineLength)
+      end
     end
     -- each line is separated by a newline
     return table.concat(lines, "\n")
@@ -430,14 +444,14 @@ aura_env.customText = function()
         local targetType = "NPC" -- deal with players later, requires different calculations
 
 
-        local positionalInfo = "Target facing player";
+        local positionalInfo = "Infront";
         if aura_env.playerClass == "HUNTER" then
             positionalInfo = "Ranged";
             aura_env.possibleResults = {
                 "Miss", "Block", "Crit", "Ordinary Hit"
             }
         elseif not aura_env.config.isTargetFacingPlayer then
-            positionalInfo = "Player behind target"
+            positionalInfo = "Behind"
             aura_env.possibleResults = {
                 "Miss", "Dodge", "Glancing", "Crit", "Ordinary Hit"
             }
@@ -454,8 +468,9 @@ aura_env.customText = function()
         tinsert(aura_env.possibleResults, "Crit Cap")
 
         textTable:AddLine("Position: " .. positionalInfo, true);
+        textTable:AddSeparator();
         textTable:AddLine(("%s on Lvl %i %s:")
-          :format(tableType, targetLevel, targetType), true);
+        :format(tableType, targetLevel, targetType), true);
         textTable:AddSeparator();
         
         -- Actual attack table results
@@ -476,7 +491,9 @@ aura_env.customText = function()
                 and "%.01f%%" 
                 or "%s"):format(chance));
             
-            if aura_env.shouldUseOffhand() then
+            if aura_env.shouldUseOffhand() 
+            and aura_env.config.showOffhand
+            then
               ohChance = NIGHT_FAE_BLUE_COLOR
                 :WrapTextInColorCode(("%.01f%%")
                 :format(aura_env.offHandTableInfo[hitType]));
