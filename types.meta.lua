@@ -376,3 +376,69 @@ function UnitAttackBothHands(unit) end
 ---@return number base The unit's base ranged attack skill. `0` if none equipped.
 ---@return number modifier The total effect of all modifiers (positive and negative) to ranged attack skill.
 function UnitRangedAttack(unit) end
+
+---[Documentation](https://wowpedia.fandom.com/wiki/API_GetNumTradeSkills)
+---Returns the number of trade skills including headers.
+---@return number numTradeSkills
+function GetNumTradeSkills() end
+
+---[Documentation](https://wowpedia.fandom.com/wiki/API_GetTradeSkillNumReagents)
+--- Returns the number of distinct reagents required by the specified recipe. 
+---@param recipeIndex number
+---@return number numReagents
+function GetTradeSkillNumReagents(recipeIndex) end
+
+---[Documentation](https://wowpedia.fandom.com/wiki/API_GetTradeSkillReagentInfo)
+--- Returns information about a reagent required by the specified recipe.
+---@param recipeIndex number
+---@param reagentIndex number
+---@return string reagentName
+---@return string reagentTexture
+---@return number reagentCount
+---@return string playerReagentCount
+function GetTradeSkillReagentInfo(recipeIndex, reagentIndex) end
+
+---[Documentation](https://wowpedia.fandom.com/wiki/API_GetTradeSkillReagentItemLink)
+--- Returns the item link for a reagent required by the specified recipe.
+---@param recipeIndex number
+---@param reagentIndex number
+---@return string itemLink
+function GetTradeSkillReagentItemLink(recipeIndex, reagentIndex) end
+
+---[Documentation](https://wowpedia.fandom.com/wiki/API_GetTradeSkillInfo)
+--- Returns information about a trade skill recipe.
+---@param recipeIndex number
+---@return string recipeName
+---@return string recipeType
+---@return integer numAvailable
+---@return boolean isExpanded
+---@return boolean altVerb
+---@return integer numSkillUps
+function GetTradeSkillInfo(recipeIndex) end
+
+---[Documentation](https://wowpedia.fandom.com/wiki/API_GetTradeSkillLine)
+---Returns information about the current tradeskill. 
+---@return string skillLineName
+---@return string skillLineRank
+---@return string skillLineMaxRank
+---@return number skillLineModifier
+function GetTradeSkillLine() end
+
+TradeSkillFrame = {} ---@type Frame
+TradeSkillFrame = {} ---@type StatusBar
+AuctionFrame = {} ---@type Frame
+
+---[Docs](https://warcraft.wiki.gg/wiki/API_SelectQuestLogEntry)
+---@param questIndex number quest log entry index to select, ascending from 1
+function SelectQuestLogEntry(questIndex) end
+
+---[Docs](https://warcraft.wiki.gg/wiki/API_SetAbandonQuest)
+---Selects the currently selected quest to be abandoned. 
+function SetAbandonQuest() end
+---[Docs](https://warcraft.wiki.gg/wiki/API_AbandonQuest())
+function AbandonQuest() end
+
+---[Docs](https://warcraft.wiki.gg/wiki/API_GetQuestLogIndexByID)
+---@param questID number
+---@return number questLogIndex
+function GetQuestLogIndexByID(questID) end

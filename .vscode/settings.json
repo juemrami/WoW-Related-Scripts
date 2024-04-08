@@ -365,7 +365,11 @@
         "BattlePetToolTip_Show",
         "BAG_FILTER_ASSIGNED_TO",
         "BAG_FILTER_LABELS",
-        "NIGHT_FAE_BLUE_COLOR"
+        "NIGHT_FAE_BLUE_COLOR",
+        "Auctionator",
+        "TradeSkillRankFrame",
+        "TradeSkillSkill1",
+        "AUCTIONATOR_L_REAGENT_SEARCH"
     ],
     "cSpell.enabled": true,
     "cSpell.enableFiletypes": [
