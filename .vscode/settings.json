@@ -8,6 +8,7 @@
         "**/.DS_Store": true,
         "**/Thumbs.db": true
     },
+    "search.collapseResults": true,
     "Lua.diagnostics.disable": [
         "deprecated",
         "duplicate-set-field",

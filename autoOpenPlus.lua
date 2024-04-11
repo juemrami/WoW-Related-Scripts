@@ -59,13 +59,15 @@ aura_env.isBagItemLocked = function(bag, slot)
     local tip = aura_env.getTooltipScanner()
     tip:ClearLines()
     tip:SetBagItem(bag, slot)
+    tip:Show()
     for i = 1, tip:NumLines() do
         local text = _G[aura_env.scantip_id .. "TextLeft" .. i]:GetText()
+        print(text)
         if text and text:find(LOCKED) then
             return true
         end
     end
-    tip:Hide()
+    -- tip:Hide()
     return false
 end
 aura_env.setAutoOpenButton = function(bagId, slotId, should_unlock)
@@ -130,7 +132,7 @@ aura_env.buttonUpdateHandler = function(allstates)
                         or (allstates[""].slot ~= slot)
                 end
                 local is_unlock_required = aura_env.isBagItemLocked(bag, slot)
-
+                print(("AutoOpenItems: item @{%i, %i} locked? %s"):format(bag, slot, is_unlock_required and "yes" or "no"))
                 if changed then
                     print(("AutoOpenItems: Next lootable item - %s. %s")
                         :format(
@@ -163,11 +165,14 @@ aura_env.buttonUpdateHandler = function(allstates)
     return true
 end
 
--- Events: BANKFRAME_OPENED, BANKFRAME_CLOSED, MAIL_SHOW, MERCHANT_SHOW, MERCHANT_CLOSED, LOOT_OPENED, LOOT_CLOSED, PLAYER_REGEN_ENABLED, BAG_UPDATE_DELAYED, BAG_UPDATE_COOLDOWN, PLAYER_INTERACTION_MANAGER_FRAME_HIDE, UI_ERROR_MESSAGE, ITEM_UNLOXKW
+-- Events: BANKFRAME_OPENED, BANKFRAME_CLOSED, MAIL_SHOW, MERCHANT_SHOW, MERCHANT_CLOSED, LOOT_OPENED, LOOT_CLOSED, PLAYER_REGEN_ENABLED, BAG_UPDATE_DELAYED, BAG_UPDATE_COOLDOWN, PLAYER_INTERACTION_MANAGER_FRAME_HIDE, UI_ERROR_MESSAGE, ITEM_UNLOCK
 aura_env.onEvent = function(allstates, event, ...)
     if aura_env.watched_frame_events[event] then
         aura_env.onWatchedFramesUpdate(allstates, event, ...)
-    elseif aura_env.button_update_events[event] then
+    elseif aura_env.button_update_events[event] 
+    or (event == "BAG_UPDATE_COOLDOWN" 
+        and aura_env.updateButtonOnNextBagUpdate)
+    then
         if aura_env.bankOpen
             or aura_env.mailOpen
             or aura_env.merchantOpen
@@ -181,6 +186,7 @@ aura_env.onEvent = function(allstates, event, ...)
             aura_env.removeButton()
             return true
         else
+            aura_env.updateButtonOnNextBagUpdate = false
             return aura_env.buttonUpdateHandler(allstates)
         end
     end
@@ -189,7 +195,10 @@ aura_env.onEvent = function(allstates, event, ...)
     if event == "UNIT_SPELLCAST_SUCCEEDED" then
         local unit, _, spellID = ...
         if unit == "player" and aura_env.lockpicking_spells[spellID] then
-            return aura_env.buttonUpdateHandler(allstates)
+            print("AutoOpenItems: Lock picked!")
+            -- make a flag and call function on next BAG_UPDATE_COOLDOWN
+            aura_env.updateButtonOnNextBagUpdate = true
+            -- return aura_env.buttonUpdateHandler(allstates)
         end
     end 
 end
