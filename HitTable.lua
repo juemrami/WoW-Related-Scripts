@@ -236,10 +236,12 @@ local agiPerCritAt60 = {
 -- Based on in-game comparing for rogue at lvl 25/40 vs 60
 -- 0.0950 @ 25. approximately
 -- 0.0550 @ 40
+-- (1/23.4) @50  
 -- 0.0345 @ 60 (1/29)
 local f = { 
     {x = 25, y = 0.0950},
     {x = 40, y = 0.0550},
+    {x = 50, y = 0.0427},
     {x = 60, y = 0.0345},
 }
 -- Lagrange coefficients
