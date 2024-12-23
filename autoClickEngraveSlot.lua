@@ -16,7 +16,15 @@ aura_env.hook = function(event, arg1)
                             and not IsPlayerMoving()
                             and not C_Engraving.IsRuneEquipped(rune.skillLineAbilityID)
                         then
-                            PickupInventoryItem(rune.equipmentSlot)
+                            local invSlot = rune.equipmentSlot
+                            if invSlot == 16 then
+                                -- fix: EngravingData.equipmentSlot returns 16 for back (should be 15)
+                                invSlot = INVSLOT_BACK 
+                            elseif invSlot == 11 then 
+                                -- Apply to 2nd ring slot when modifier held
+                                if IsModifierKeyDown() then invSlot = 12 end
+                            end
+                            PickupInventoryItem(invSlot)
                             ClearCursor()
 
                             -- accepts the replace enchant popup
@@ -57,7 +65,6 @@ aura_env.hook = function(event, arg1)
                     -- default to hiding the textures
                     button.selectedTex:Hide()
                     button.equippedTex:Hide()
-                    
                     -- enable texture if equipped
                     if button.skillLineAbilityID
                         and C_Engraving.IsRuneEquipped(
