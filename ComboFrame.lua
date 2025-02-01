@@ -1,15 +1,3 @@
----Atlases (availabile in classic client)
--- ComboPoints-PointBg
--- ComboPoints-ComboPoint
--- ComboPoints-FX-Circle
--- ComboPoints-FX-Star
-
---- for extra CPs (not implemented )
--- ComboPoints-ComboPointDash-Bg
--- ComboPoints-ComboPointDash
--- ComboPoints-FX-Dash
-
--- ComboPoints-AllPointsBG
 ------------------------------------------
 -- Data driven layout tweaks for differing numbers of combo point frames.
 -- Indexed by max "usable" combo points (see below)
@@ -25,6 +13,23 @@ local comboPointMaxToLayout = {
         ["xOffs"] = -1,
     },
 };
+------------------------------------------
+-- Just to make the demo work nicely on Weakauras lol
+local debouncer = aura_env.saved and aura_env.saved.debouncer
+if not debouncer then
+    aura_env.saved = {
+        debouncer = function(func, delay)
+            local timer = C_Timer.NewTicker(delay, func)
+            return function()
+                timer:Cancel()
+                timer = C_Timer.NewTicker(delay, func)
+            end
+        end
+    }
+end
+ ------------------------------------------
+
+local isClassicEra = WOW_PROJECT_ID == WOW_PROJECT_CLASSIC
 ---@param maxPoints number max points that should be shown
 ---@param currentPoint ComboPointFrame
 ---@param prevPoint ComboPointFrame?
@@ -227,6 +232,9 @@ aura_env.getComboPointBar = function()
     return aura_env.bar
 end
 aura_env.maxPoints = UnitPowerMax("player", Enum.PowerType.ComboPoints)
+local debouncedSendDemoSignal = aura_env.saved.debouncer(
+    function() WeakAuras.ScanEvents("COMBO_POINT_DEMO") end, 0.2
+)
 --- events: PLAYER_ENTERING_WORLD, UNIT_POWER_UPDATE
 aura_env.onEvent = function(event, ...)
     if event == "PLAYER_ENTERING_WORLD" or not aura_env.bar then
@@ -247,7 +255,8 @@ aura_env.onEvent = function(event, ...)
             return
         end
         aura_env.updateComboPoints()
-    elseif event == "COMBAT_LOG_EVENT_UNFILTERED" 
+    elseif event == "COMBAT_LOG_EVENT_UNFILTERED"
+    and isClassicEra -- only in classic, wipe combo points on target death
     and select(2,...) == "UNIT_DIED"
     and select(8,...) == UnitGUID("target") 
     then
@@ -258,7 +267,19 @@ aura_env.onEvent = function(event, ...)
         else
             aura_env.bar.BackGround:SetShown(true)
         end
-        WeakAuras.ScanEvents("COMBO_POINT_DEMO")
+        if aura_env.config.customColor then 
+            for i = 1, aura_env.maxPoints do
+                aura_env.bar.ComboPoints[i].Point:SetDesaturated(true)
+                aura_env.bar.ComboPoints[i].Point:SetBlendMode("DISABLE")
+                aura_env.bar.ComboPoints[i].Point:SetVertexColor(
+                    aura_env.config.customColor[1],
+                    aura_env.config.customColor[2],
+                    aura_env.config.customColor[3],
+                    aura_env.config.customColor[4]
+                )
+            end
+        end
+        debouncedSendDemoSignal()
     elseif event == "COMBO_POINT_DEMO" then
         if WeakAuras.IsOptionsOpen() 
         and (not aura_env.lastDemoEvent
@@ -328,3 +349,15 @@ aura_env.animOut = function(point)
         point.AnimOut:Play();
     end
 end
+---Atlases (availabile in classic client)
+-- ComboPoints-PointBg
+-- ComboPoints-ComboPoint
+-- ComboPoints-FX-Circle
+-- ComboPoints-FX-Star
+
+--- for extra CPs (not implemented )
+-- ComboPoints-ComboPointDash-Bg
+-- ComboPoints-ComboPointDash
+-- ComboPoints-FX-Dash
+
+-- ComboPoints-AllPointsBG
