@@ -1,6 +1,12 @@
 --- Maps npcID -> "default" -> npc num -> assigned raid marker
 ---@type {[npcID]: {default: {[integer]: RaidMarkerIndex}}}}
 local enemiesConfig = {}
+local DevTool = {
+    AddData = function(...)
+        if not DevTool then return end
+        DevTool:AddData(...)
+    end
+}
 
 ---For context, an inactive mark means that this addon is free to use it for marking whenever a mouseover unit is found to be a valid target. (ie its in the options and uses a marker that is not "locked" or active).
 ---Releasing a mark, simply means unlocked or making it de-active. No removal of the actual mark is done.
