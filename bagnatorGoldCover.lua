@@ -1,8 +1,13 @@
 if not C_AddOns.IsAddOnLoaded("Baganator") then return end
+if not aura_env.saved then aura_env.saved = {} end
 local buttonID = "BaganatorCustomMoneyToggleButton"
-aura_env.onEvent = function(event)
+-- events: PLAYER_ENTERING_WORLD, STATUS, BaganatorCustomMoneyToggleButtonPressed
+aura_env.onEvent = function(event, isVisible)
     if event == "PLAYER_ENTERING_WORLD" or event == "STATUS" then
         aura_env.init()
+    end
+    if event =="BaganatorCustomMoneyToggleButtonPressed" then
+        aura_env.saved.moneyVisible = isVisible
     end
 end
 aura_env.init = function()
@@ -55,8 +60,16 @@ aura_env.init = function()
             toggleButton:SetScript("OnClick", function(_, clickType, isMouseDown)
                 if isMouseDown then return end
                 local isMoneyVisible = toggleHideOnClick(moneyFrame)
+                WeakAuras.ScanEvents("BaganatorCustomMoneyToggleButtonPressed", isMoneyVisible)
                 toggleButton.Icon:SetDesaturated(not isMoneyVisible)
             end)
+            aura_env.initialized = true
+            if aura_env.saved.moneyVisible == false then
+                toggleHideOnClick(moneyFrame)
+                toggleButton.Icon:SetDesaturated(not aura_env.saved.moneyVisible)
+            end
+        else
+            aura_env.initialized = false
         end
     end
     Baganator.CallbackRegistry:RegisterCallback(Baganator.CallbackRegistry.Event.SettingChanged,
@@ -67,6 +80,5 @@ aura_env.init = function()
         end
     )
     setupMoneyToggle(BAGANATOR_CONFIG.current_skin) -- run once on load
-    aura_env.initialized = true
     WeakAuras.prettyPrint(aura_env.id, "has been loaded!")
 end
